@@ -144,8 +144,7 @@ int perform_script (char *str, struct char_data *self,
    while (list_script[cpt].function) 
      if (!(strncmp (list_script[cpt].name, p, strlen (list_script[cpt].name)))) {
        p += strlen(list_script[cpt].name);
-       if (call_ASCRIPT (list_script[cpt].function, b, self, vict,
-                         ovict, from, list_script[cpt].param))
+       if (call_ASCRIPT (list_script[cpt].function, b, self, vict, ovict, from, list_script[cpt].param))
          rts_code = TRUE;
        break;
      }

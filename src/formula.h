@@ -58,7 +58,7 @@
 #define ERROR_5000         5000  /* Unknow variable or operator */
 #define ERROR_5001         5001  /* formula don't have as much ( as ) */
 #define ERROR_5002         5002  /* formula don't have as much ? as : */
-#define ERROR_5003         5003  /* level 5 reached */
+#define ERROR_5003         5003  /* failed to resolve the formula */
 #define ERROR_5004         5004  /* : expected but not found */
 #define ERROR_5005         5005  /* a formula can't end by : */
 #define ERROR_5006         5006  /* division by 0 */

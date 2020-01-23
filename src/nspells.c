@@ -248,7 +248,7 @@ void call_ACMD (void (*function) (), struct char_data *ch, char *argument, int c
 ACMD(do_cast)
 {
  char *s, *targ;
- char *wrong_pos[] = 
+ static const char *wrong_pos[] = 
 { "You can't do much of anything like this!\r\n",
   "You can't do much of anything like this!\r\n",
   "You can't do much of anything like this!\r\n",
@@ -261,9 +261,12 @@ ACMD(do_cast)
 
  struct char_data *vict;
  struct obj_data *ovict = NULL;
- struct str_spells *Q;
+ struct str_spells *spell;
  struct affected_type af;
  int i, delay, rts_code = TRUE;
+
+ if (IS_NPC(ch))
+   return;
 
  if (subcmd == SCMD_SPELL) {
    s = strtok(argument, "'");
@@ -277,31 +280,32 @@ ACMD(do_cast)
    }
    targ = strtok (NULL, "\0");
  }
- else
+ else // skill
    s = argument;
 
- for (Q = list_spells; Q; Q=Q->next) {
-   if (isname(s, Q->name) && ((Q->status == available) || 
-                              (GET_LEVEL(ch) == LVL_IMPL)) )
+ for (spell = list_spells; spell; spell=spell->next) {
+   if (isname(s, spell->name) && ((spell->status == available) || 
+                                  (GET_LEVEL(ch) == LVL_IMPL)) )
      break;
  }
- if (!Q) {
+ if (!spell) {
    send_to_char (ch, "There's no such %s available to you.\r\n", (subcmd == SCMD_SKILL) ? "skill" : "spell");
    return;
  }
- if ((Q->type == SKILL) && (subcmd != SCMD_SKILL)) {
+ if ((spell->status != available) ||
+     ((spell->type == SKILL) && (subcmd != SCMD_SKILL))) {
    send_to_char (ch, "There's no such spell available to you.\r\n");
    return;
  }
- if ((Q->type == SPELL) && (subcmd != SCMD_SPELL)) {
+ if ((spell->type == SPELL) && (subcmd != SCMD_SPELL)) {
    send_to_char (ch, "Huh?!?\r\n");
    return;
  }
- if ((GET_LEVEL(ch) < LVL_IMMORT) && !IS_SPELL_LEARNED (ch, Q->serial)) {
-   send_to_char (ch, "You're not learned in that area.\r\n");
+ if ((GET_LEVEL(ch) < LVL_IMMORT) && !IS_SPELL_LEARNED (ch, spell->serial)) {
+   send_to_char (ch, "You are unfamilliar with that %s.\r\n", (subcmd == SCMD_SKILL) ? "skill" : "spell");
    return;
  }
- if (GET_POS(ch) < Q->min_pos) {
+ if (GET_POS(ch) < spell->min_pos) {
    send_to_char (ch, "%s", wrong_pos[(int) GET_POS(ch)]);
    return;
  }
@@ -314,67 +318,62 @@ ACMD(do_cast)
       return;
     }
  }
- if ((vict == ch) && (!IS_SPELL_SELF(Q->flags)) && (!IS_SPELL_GROUP(Q->flags)) ) {
+ if ((vict == ch) && (!IS_SPELL_SELF(spell->flags)) && (!IS_SPELL_GROUP(spell->flags)) ) {
    send_to_char (ch, "You can't cast this spell upon yourself!\r\n");
    return;
  }
- if ((vict != ch) && (!IS_SPELL_VICT(Q->flags)) && (!IS_SPELL_VICTGRP(Q->flags)) 
-                  && (!IS_SPELL_ROOM(Q->flags))) {
+ if ((vict != ch) && (!IS_SPELL_VICT(spell->flags)) && (!IS_SPELL_VICTGRP(spell->flags)) 
+                  && (!IS_SPELL_ROOM(spell->flags))) {
    send_to_char (ch, "You can't cast this spell on someone else!\r\n");
    return;
  }
 
- if (!Q->effectiveness || (rand_number(1, 100) > 
-      formula_interpreter (ch, vict, Q->serial, TRUE, 
-                           Q->effectiveness, &rts_code))){
+ if (!spell->effectiveness || (rand_number(1, 100) > 
+      formula_interpreter (ch, vict, spell->serial, TRUE, spell->effectiveness, &rts_code))){
    send_to_char (ch, "You lost your concentration!\r\n");
    return;
  }
 
- if (Q->delay) {
-   delay = formula_interpreter (ch, vict, Q->serial, TRUE, Q->delay, 
+ if (spell->delay) {
+   delay = formula_interpreter (ch, vict, spell->serial, TRUE, spell->delay, 
                                 &rts_code);
    WAIT_STATE (ch, (delay > MAX_SPELL_DELAY) ? MAX_SPELL_DELAY : delay);
  }
 
- if (affected_by_spell (vict, Q->serial) && (!IS_SPELL_ACCDUR(Q->flags)) &&
-                       (!IS_SPELL_ACCAFF(Q->flags))) {
+ if (affected_by_spell (vict, spell->serial) && (!IS_SPELL_ACCDUR(spell->flags)) &&
+                                                (!IS_SPELL_ACCAFF(spell->flags))) {
    send_to_char (ch, "%s", NOEFFECT);
    rts_code = TRUE;
  }
  else
    for (i=0; i<6; i++) 
-     if (Q->applies[i].appl_num != -1) {
-       af.spell = Q->serial;
-       af.duration = Q->applies[i].duration ? 
-                     formula_interpreter (ch, vict, Q->serial, TRUE, 
-                                          Q->applies[i].duration, &rts_code) : 0;
-       af.modifier = Q->applies[i].modifier ?
-                     formula_interpreter (ch, vict, Q->serial, TRUE,
-                                          Q->applies[i].modifier, &rts_code) : 0; 
-       af.bitvector[0] = Q->applies[i].appl_num < NUM_APPLIES ? 0 : 
-                      (1 << (Q->applies[i].appl_num - NUM_APPLIES));
-       af.location = Q->applies[i].appl_num < NUM_APPLIES ? 
-                             Q->applies[i].appl_num : APPLY_NONE;
-       affect_join (vict, &af, IS_SPELL_ACCDUR(Q->flags), FALSE,
-                    IS_SPELL_ACCAFF(Q->flags), FALSE); 
+     if (spell->applies[i].appl_num != -1) {
+       af.spell = spell->serial;
+       af.duration = spell->applies[i].duration ? 
+                     formula_interpreter (ch, vict, spell->serial, TRUE, spell->applies[i].duration, &rts_code) : 0;
+       af.modifier = spell->applies[i].modifier ?  formula_interpreter (ch, vict, spell->serial, TRUE,
+                                                   spell->applies[i].modifier, &rts_code) : 0; 
+       af.bitvector[0] = spell->applies[i].appl_num < NUM_APPLIES ? 0 : 
+                      (1 << (spell->applies[i].appl_num - NUM_APPLIES));
+       af.location = spell->applies[i].appl_num < NUM_APPLIES ?  spell->applies[i].appl_num : APPLY_NONE;
+       affect_join (vict, &af, IS_SPELL_ACCDUR(spell->flags), FALSE, IS_SPELL_ACCAFF(spell->flags), FALSE); 
        rts_code = TRUE; 
      }
 
- if (Q->function) 
-   if ((Q->type == SPELL) && (subcmd == SCMD_SPELL)) {
-     call_ASPELL (Q->function, GET_LEVEL(ch), ch, vict, ovict);
+ if (spell->function) 
+   if ((spell->type == SPELL) && (subcmd == SCMD_SPELL)) {
+     call_ASPELL (spell->function, GET_LEVEL(ch), ch, vict, ovict);
      rts_code = TRUE; 
    }
-   else if ((Q->type == SKILL) && (subcmd == SCMD_SKILL)) {
-          call_ACMD (Q->function, ch, argument, 0, 0);
+   else if ((spell->type == SKILL) && (subcmd == SCMD_SKILL)) {
+          call_ACMD (spell->function, ch, argument, 0, 0);
           rts_code = TRUE;
         }
         else;
  else;
 
- if (Q->script)
-   if (!perform_script (Q->script, ch, vict, ovict, Q->serial, 0) && !rts_code)
+ if (spell->script)
+   if (!perform_script (spell->script, ch, vict, ovict, spell->serial, 0) && !rts_code)
      send_to_char (ch, "%s", NOEFFECT);   
 }
 

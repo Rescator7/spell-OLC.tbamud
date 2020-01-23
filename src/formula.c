@@ -17,6 +17,8 @@
 #include "db.h"
 #include "formula.h"
 
+#define DEBUG_FORMULA
+
 void add_to_formula (struct formula **head_formula, int command, int value)
 {
  struct formula *Q, *ptr, *prev = NULL;
@@ -97,7 +99,7 @@ void send_formula_error (struct char_data *ch, int error, int spell_vnum, int sy
  "Unknown variable or operator",               /* 5000 */
  "it should have as much '(' and ')'",         /* 5001 */
  "it should have as much '?' and ':'",         /* 5002 */
- "can't perform formula. (level 6 reached!)",  /* 5003 */
+ "can't perform formula. failed to solve",     /* 5003 */
  "':' was expected but not found",             /* 5004 */
  "A formula can't end by ':'",                 /* 5005 */
  "division by 0",                              /* 5006 */
@@ -129,27 +131,53 @@ void send_formula_error (struct char_data *ch, int error, int spell_vnum, int sy
 }
 
 #ifdef DEBUG_FORMULA
-  void show_formula (struct char_data *ch, struct formula *head_formula)  
-  {
-    int cpt = 0;
-    struct formula *Q; 
+void show_formula (struct char_data *ch, struct formula *head_formula)  
+{
+ char buf[2048];
 
-    strcpy (buf, "formula : ");
-    for (Q = head_formula; Q; Q=Q->next, cpt++) { 
-       if (Q->command == CODE_DIGIT) 
-         sprintf (buf, "%s%d", buf, Q->value);
-       else
-         sprintf (buf, "%s%s", buf, ((Q->command    == CODE_ART_SUB) &&
-                                     (Q->next) && 
-                                     (Q->next->sign == -1)) ? "+" :
-                                    ((Q->command    == CODE_ART_ADD) &&
-                                     (Q->next) &&  
-                                     (Q->next->sign == -1)) ? "-" : 
-                                    list_codes[Q->command]);
-    }
-    sprintf (buf, "%s, nodes: %d\r\n", buf, cpt);
-    send_to_char (ch, buf);
+ int cpt = 0;
+ struct formula *Q; 
+
+ strcpy (buf, "formula : ");
+ for (Q = head_formula; Q; Q=Q->next, cpt++) { 
+   if (Q->command == CODE_DIGIT) 
+     sprintf (buf, "%s%d", buf, Q->value);
+   else
+     sprintf (buf, "%s%s", buf, ((Q->command    == CODE_ART_SUB) &&
+                                 (Q->next) && 
+                                 (Q->next->sign == -1)) ? "+" :
+                                ((Q->command    == CODE_ART_ADD) &&
+                                 (Q->next) &&  
+                                 (Q->next->sign == -1)) ? "-" : 
+                                 list_codes[Q->command]);
   }
+  sprintf (buf, "%s, nodes: %d\r\n", buf, cpt);
+  send_to_char (ch, "%s", buf);
+}
+
+void show_ABC(struct char_data *ch, struct formula *C) 
+{
+ struct formula *A = NULL, *B = NULL;
+
+ if (C)
+   B = C->prev;
+
+ if (B)
+   A = B->prev;
+
+ if (A)
+ send_to_char(ch, "A) Command: %d\r\n"
+                  "   Sign:    %d\r\n"
+                  "   Value:   %d\r\n", A->command, A->sign, A->value);
+ if (B)
+ send_to_char(ch, "B) Command: %d\r\n"
+                  "   Sign:    %d\r\n"
+                  "   Value:   %d\r\n", B->command, B->sign, B->value);
+ if (C)
+ send_to_char(ch, "C) Command: %d\r\n"
+                  "   Sign:    %d\r\n"
+                  "   Value:   %d\r\n", C->command, C->sign, C->value);
+}
 #endif
 
 void remove_node (struct formula **head_formula, struct formula *ptr)
@@ -168,20 +196,45 @@ int remove_brace (struct formula **head_formula, struct formula *C,
 {
  struct formula *A, *B;
 
- if (!C)
-   return 0;
  B = C->prev;
  A = B->prev;
- if ((C->command == CODE_ART_CBRACE) && 
-    ((A->command == CODE_ART_OBRACE) ||
-     (A->command == CODE_ART_RAND))) {
+
+#ifdef DEBUG_FORMULA
+ show_ABC(ch, C);
+#endif
+
+ if (!A) {
+  B->command = CODE_DIGIT;
+  if (C->command == CODE_ART_CBRACE)
+    remove_node (head_formula, C);
+
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
+  return 1;
+ }
+
+ if (B->command == CODE_ART_RAND) {
+   B->command = CODE_DIGIT;
+   B->value = (B->value < 0) ? 0 : rand_number(1, B->value);
+
+   remove_node (head_formula, C);
+
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
+   return 1;
+ }
+
+ if ((A->command == CODE_ART_OBRACE) || (A->command == CODE_ART_RAND)) {
    if (A->command == CODE_ART_RAND)
      B->value = (B->sign == -1) ? 0 : rand_number(1, B->value);
+
    remove_node (head_formula, C);
    remove_node (head_formula, A);
 
 #ifdef DEBUG_FORMULA
-     show_formula(ch, *head_formula);
+   show_formula(ch, *head_formula);
 #endif
    return 1; 
  }
@@ -230,8 +283,7 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
                                *rts_code = ERROR_5005; 
                                return NULL;
                              }
-                             A->value = A->value ? C->value :
-                                        C->next->next->value;
+                             A->value = A->value ? C->value : C->next->next->value;
                              remove_node (head_formula, C->next->next);
                              remove_node (head_formula, C->next);
                              remove_node (head_formula, C);
@@ -250,14 +302,14 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
    case CODE_ART_AND   : A->value = (A->value &  C->value); break;
    case CODE_ART_OR    : A->value = (A->value |  C->value); break;
    case CODE_ART_MOD   : A->value = (A->value %  C->value); break;
-   case CODE_ART_SUB   : if (!A) { // || (A->command != CODE_DIGIT)) {
+   case CODE_ART_SUB   : if (!A) { 
                            C->sign = -1;
                            remove_node (head_formula, B);
                            return (C);
                          } else
                              A->value = (A->value - C->value);
-                         break; // here
-   case CODE_ART_ADD   : if (!A) {// || (A->command != CODE_DIGIT)) {
+                         break; 
+   case CODE_ART_ADD   : if (!A) {
                            remove_node (head_formula, B);
                            return (C);
                          } else
@@ -300,13 +352,16 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
     for (ptr = NULL, Q = *head_formula; Q; Q = Q->next)
       if ((Q->command == CODE_ART_OBRACE) || (Q->command == CODE_ART_RAND)) 
         ptr = Q;
+
     if (ptr == NULL) {
       ptr = *head_formula;
       exit = 1;
     };
+
     brace = 1; 
     mode = 0;
     tmp = ptr;
+
     do {
       while (ptr && ptr->command != CODE_ART_CBRACE) {
         if (strchr (priority_check[mode], CHAR_CODE(ptr->command))) {
@@ -320,22 +375,28 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
         else
           ptr = ptr->next;
       }
-      if (!remove_brace(head_formula, ptr, ch))
-        if (++mode > 4)  
-          if (!exit) { 
-            *rts_code = ERROR_5003;
-            send_formula_error (ch, *rts_code, spell_vnum, syserr);
-            free_formula(head_formula);
-            return 0; 
-          }
-          else
-            brace = 0; 
+
+      if (ptr && !remove_brace(head_formula, ptr, ch))
+        if (++mode > 4) {  
+#ifdef DEBUG_FORMULA
+          show_ABC(ch, ptr);
+#endif
+          *rts_code = ERROR_5003;
+          send_formula_error (ch, *rts_code, spell_vnum, syserr);
+          free_formula(head_formula);
+          return 0; 
+        }
         else
           ptr = tmp;
       else
         brace = 0; 
+
     } while (brace);
   } while (!exit);
+
+#ifdef DEBUG_FORMULA
+  show_formula(ch, *head_formula);
+#endif
 
   result = (*head_formula)->value * (*head_formula)->sign;
   free_formula(head_formula);
@@ -380,6 +441,8 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
    send_formula_error (self, *rts_code, spell_vnum, syserr);
    return 0;
  }
+
+ add_to_formula (&head_formula, CODE_ART_OBRACE, 0); // little hack. 
 
  for (i=0; i<strlen(buf); i++) {
    if (type_act)
@@ -465,6 +528,8 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 #ifdef DEBUG_FORMULA
    show_formula (self, head_formula);
 #endif
+ add_to_formula (&head_formula, CODE_ART_CBRACE, 0); // little hack.
+
  return (perform_formula(&head_formula, spell_vnum, self, syserr, rts_code));
 }
 

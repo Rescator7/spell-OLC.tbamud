@@ -1000,6 +1000,11 @@ ACMD(do_spedit) {
   if (IS_NPC(ch) || !ch->desc || STATE(ch->desc) != CON_PLAYING)
     return;
 
+  if (FIGHTING(ch)) {
+    send_to_char(ch, "You should focus on your fight!\r\n");
+    return;
+  }
+
 /* Give the descriptor an OLC structure. */
   if (d->olc) {
     mudlog(BRF, LVL_IMMORT, TRUE, "SYSERR: do_spedit: Player already had olc structure.");
