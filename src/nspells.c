@@ -12,8 +12,10 @@
 #include "code.h"
 #include "modify.h"
 #include "db.h"
+#include "spells.h"
 
 extern char* NOEFFECT;
+ACMD(do_whirlwind);
 
 void save_plrspells (struct char_data *ch)
 {
@@ -108,7 +110,7 @@ int IS_SPELL_LEARNED (struct char_data *ch, int serial) {
 
 ACMD(do_listspells)
 {
- char buf[2048];
+ char buf[2048];   // TODO: fix me. crash buffer overflow
  char buf1[2048];
 
  int cpt = 0, x;
@@ -191,6 +193,9 @@ void assign_spells (void)
  ACMD(do_track);
  ACMD(do_steal);
  ACMD(do_hide);
+ ACMD(do_pick_lock);
+ ACMD(do_whirwind);
+ ACMD(do_bandage);
 
  int i = 0;
  struct str_spells *Q;
@@ -198,38 +203,179 @@ void assign_spells (void)
     char *name;
     void *function;
     char type;
-    int  cmd, subcmd;
+    int  maxmana,
+         minmana,
+         manachng,
+         min_pos,
+         targ_flags,
+         violent_flags,
+         mag_flags;
+    char *mesg_to_self;
  } spell_assign[] = {
-{"charm",          spell_charm         , SPELL, 0, 0},
-{"create water",   spell_create_water  , SPELL, 0, 0},
-{"detect poison",  spell_detect_poison , SPELL, 0, 0},
-{"enchant weapon", spell_enchant_weapon, SPELL, 0, 0},
-// {"gate",           spell_gate          , SPELL, 0, 0},
-{"identify",       spell_identify      , SPELL, 0, 0},
-{"locate object",  spell_locate_object , SPELL, 0, 0},
-{"recall",         spell_recall        , SPELL, 0, 0},
-{"summon",         spell_summon        , SPELL, 0, 0},
-{"teleport",       spell_teleport      , SPELL, 0, 0},
-{"backstab",       do_backstab         , SKILL, 1, 0},
-{"bash",           do_bash             , SKILL, 1, 0},
-{"hide",           do_hide             , SKILL, 1, 0},
-{"kick",           do_kick             , SKILL, 1, 0},
-{"rescue",         do_rescue           , SKILL, 1, 0},
-{"sneak",          do_sneak            , SKILL, 1, 0},
-{"steal",          do_steal            , SKILL, 1, 0},
-{"track",          do_track            , SKILL, 0, 0},
-{"",               NULL}
-   };
- 
- while (spell_assign[i].function) {
+{"backstab",       do_backstab         , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"bandage",        do_bandage          , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"bash",           do_bash             , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"hide",           do_hide             , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"kick",           do_kick             , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"pick lock",      NULL                , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"rescue",         do_rescue           , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"sneak",          do_sneak            , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"steal",          do_steal            , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"track",          do_track            , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"whirlwind",      do_whirlwind        , SKILL, 0, 0, 0, 0, 0, 0, 0, NULL},
+
+{"charm",          spell_charm         , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"create water",   spell_create_water  , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"detect poison",  spell_detect_poison , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"enchant weapon", spell_enchant_weapon, SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"identify",       spell_identify      , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"locate object",  spell_locate_object , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"recall",         spell_recall        , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"summon",         spell_summon        , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+{"teleport",       spell_teleport      , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL},
+
+{"animate dead",   NULL                , SPELL, 35, 10, 3, POS_STANDING, TAR_OBJ_ROOM, FALSE, MAG_SUMMONS, NULL},
+{"armor",          NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS, 
+                                         "You feel less protected."},
+{"bless",          NULL                , SPELL, 35, 5, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV, FALSE, 
+                                                                        MAG_AFFECTS | MAG_ALTER_OBJS,
+	                                 "You feel less righteous."},
+{"blindness",      NULL                , SPELL, 35, 25, 1, POS_STANDING,  TAR_CHAR_ROOM | TAR_NOT_SELF, FALSE, MAG_AFFECTS,
+	                                 "You feel a cloak of blindness dissolve."},
+{"burning hands",  NULL                , SPELL, 30, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"call lightning", NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+                                         NULL},
+{"charm person",   NULL                , SPELL, 75, 50, 2, POS_FIGHTING, TAR_CHAR_ROOM | TAR_NOT_SELF, TRUE, MAG_MANUAL,
+	                                 "You feel more self-confident."},
+{"chill touch",    NULL                , SPELL, 30, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, 
+                                                                         TRUE, MAG_DAMAGE | MAG_AFFECTS,
+	                                 "You feel your strength return."},
+{"clone",          NULL                , SPELL, 80, 65, 5, POS_STANDING, TAR_IGNORE, FALSE, MAG_SUMMONS,
+	                                 NULL},
+{"color spray",    NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"control weather",NULL                , SPELL, 75, 25, 5, POS_STANDING, TAR_IGNORE, FALSE, MAG_MANUAL,
+	                                 NULL}, // VERIFY MAG_MANUAL
+{"create food",    NULL                , SPELL, 30, 5, 4, POS_STANDING, TAR_IGNORE, FALSE, MAG_CREATIONS,
+	                                 NULL},
+{"create water",   NULL                , SPELL,  30, 5, 4, POS_STANDING, TAR_OBJ_INV | TAR_OBJ_EQUIP, FALSE, MAG_MANUAL,
+	                                 NULL}, // doublon
+{"cure blind",     NULL                , SPELL, 30, 5, 2, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_UNAFFECTS,
+	                                 NULL},
+{"cure critic",    NULL                , SPELL, 30, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_POINTS,
+	                                 NULL},
+{"cure light",     NULL                , SPELL, 30, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_POINTS,
+	                                 NULL},
+{"curse",          NULL                , SPELL, 80, 50, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV, TRUE, 
+                                                           MAG_AFFECTS | MAG_ALTER_OBJS,
+	                                 "You feel more optimistic."},
+{"darkness",       NULL                , SPELL, 30, 5, 4, POS_STANDING, TAR_IGNORE, FALSE, MAG_ROOMS,
+	                                 NULL},
+{"detect alignment",NULL               , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
+	                                 "You feel less aware."},
+{"detect invisibility", NULL           , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
+	                                 "Your eyes stop tingling."},
+{"detect magic",   NULL                , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
+	                                 "The detect magic wears off."},
+{"detect poison",  NULL                , SPELL, 15, 5, 1, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
+                                                          TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
+	                                 "The detect poison wears off."},
+{"dispel evil",    NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"dispel good",    NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+                                         NULL},
+{"earthquake",     NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_IGNORE, TRUE, MAG_AREAS,
+	                                 NULL},
+{"enchant weapon", NULL                , SPELL, 150, 100, 10, POS_STANDING, TAR_OBJ_INV, FALSE, MAG_MANUAL,
+	                                 NULL},
+{"energy drain",   NULL                , SPELL, 40, 25, 1, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, 
+                                                           MAG_DAMAGE | MAG_MANUAL,
+	                                 NULL},
+{"group armor",    NULL                , SPELL, 50, 30, 2, POS_STANDING, TAR_IGNORE, FALSE, MAG_GROUPS,
+	                                 NULL},
+{"fireball",       NULL                , SPELL, 40, 30, 2, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"fly",            NULL                , SPELL, 40, 20, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
+	                                 "You drift slowly to the ground."},
+{"group heal",     NULL                , SPELL, 80, 60, 5, POS_STANDING, TAR_IGNORE, FALSE, MAG_GROUPS,
+	                                 NULL},
+{"harm",           NULL                , SPELL, 75, 45, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"heal",           NULL                , SPELL, 60, 40, 3, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_POINTS | MAG_UNAFFECTS,
+	                                 NULL},
+{"infravision",    NULL                , SPELL, 25, 10, 1, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
+	                                 "Your night vision seems to fade."},
+{"invisibility",   NULL                , SPELL, 35, 25, 1, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
+                                                           TAR_OBJ_ROOM, FALSE, MAG_AFFECTS | MAG_ALTER_OBJS,
+	                                 "You feel yourself exposed."},
+{"lightning bolt", NULL                , SPELL, 30, 15, 1, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"locate object",  NULL                , SPELL, 25, 20, 1, POS_STANDING, TAR_OBJ_WORLD, FALSE, MAG_MANUAL,
+	                                 NULL},
+{"magic missile",  NULL                , SPELL, 25, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"poison",         NULL                , SPELL, 50, 20, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_NOT_SELF | TAR_OBJ_INV, TRUE,
+	                                                   MAG_AFFECTS | MAG_ALTER_OBJS,
+	                                 "You feel less sick."},
+{"protection from evil", NULL          , SPELL, 40, 10, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
+	                                 "You feel less protected."},
+{"remove curse",   NULL                , SPELL, 45, 25, 5, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_EQUIP, FALSE,
+	                                                   MAG_UNAFFECTS | MAG_ALTER_OBJS,
+	                                 NULL},
+{"remove poison",  NULL                , SPELL, 40, 8, 4, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
+                                                          TAR_OBJ_ROOM, FALSE, MAG_UNAFFECTS | MAG_ALTER_OBJS,
+	                                 NULL},
+{"sanctuary",      NULL                , SPELL, 110, 85, 5, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
+	                                 "The white aura around your body fades."},
+{"sense life",     NULL                , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
+	                                 "You feel less aware of your surroundings."},
+{"shocking grasp", NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+	                                 NULL},
+{"sleep",          NULL                , SPELL, 40, 25, 5, POS_STANDING, TAR_CHAR_ROOM, TRUE, MAG_AFFECTS,
+	                                 "You feel less tired."},
+{"strength",       NULL                , SPELL, 35, 30, 1, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
+	                                 "You feel weaker."},
+{"summon",         NULL                , SPELL, 75, 50, 3, POS_STANDING, TAR_CHAR_WORLD | TAR_NOT_SELF, FALSE, MAG_MANUAL,
+	                                 NULL},
+{"teleport",       NULL                , SPELL, 75, 50, 3, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_MANUAL,
+	                                 NULL},
+{"waterwalk",      NULL                , SPELL, 40, 20, 2, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
+	                                 "Your feet seem less buoyant."},
+{"word of recall", NULL                , SPELL, 20, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_MANUAL,
+	                                 NULL},
+{"identify",       NULL                , SPELL, 50, 25, 5, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
+                                         TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
+                                         NULL},
+{ NULL,            NULL                , SPELL, 0, 0, 0, 0, 0, 0, 0, NULL}
+};
+
+/*
+  // NON-castable spells should appear below here. 
+  spello(SPELL_IDENTIFY, "identify", 0, 0, 0, 0,
+	TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
+	NULL);
+
+  // you might want to name this one something more fitting to your theme -Welcor
+  spello(SPELL_DG_AFFECT, "Script-inflicted", 0, 0, 0, POS_SITTING,
+	TAR_IGNORE, TRUE, 0,
+	NULL);
+*/
+
+ while (spell_assign[i].name) {
    CREATE(Q, struct str_spells, 1);
    spedit_init_new_spell (Q);
    free (Q->name);    /* spedit_init_new_spell will strdup("undefined"); */
+
    Q->name     = strdup (spell_assign[i].name);
    Q->type     = spell_assign[i].type;
    Q->function = spell_assign[i].function; 
-   Q->serial   = ++i;
+   Q->min_pos  = spell_assign[i].min_pos;
+   Q->targ_flags = spell_assign[i].targ_flags;
+   Q->mag_flags = spell_assign[i].mag_flags;
    Q->status   = available;
+
+   Q->serial   = ++i;   
    spedit_save_internally (Q);
  }
 }
@@ -318,12 +464,11 @@ ACMD(do_cast)
       return;
     }
  }
- if ((vict == ch) && (!IS_SPELL_SELF(spell->flags)) && (!IS_SPELL_GROUP(spell->flags)) ) {
+ if ((vict == ch) && !IS_SPELL_SELF(spell) && (!IS_SPELL_GROUP(spell)) ) {
    send_to_char (ch, "You can't cast this spell upon yourself!\r\n");
    return;
  }
- if ((vict != ch) && (!IS_SPELL_VICT(spell->flags)) && (!IS_SPELL_VICTGRP(spell->flags)) 
-                  && (!IS_SPELL_ROOM(spell->flags))) {
+ if ((vict != ch) && !IS_SPELL_VICT(spell) && !IS_SPELL_GRPVICT(spell) && !IS_SPELL_ROOM(spell)) {
    send_to_char (ch, "You can't cast this spell on someone else!\r\n");
    return;
  }
@@ -340,12 +485,14 @@ ACMD(do_cast)
    WAIT_STATE (ch, (delay > MAX_SPELL_DELAY) ? MAX_SPELL_DELAY : delay);
  }
 
+/*
  if (affected_by_spell (vict, spell->serial) && (!IS_SPELL_ACCDUR(spell->flags)) &&
                                                 (!IS_SPELL_ACCAFF(spell->flags))) {
    send_to_char (ch, "%s", NOEFFECT);
    rts_code = TRUE;
  }
  else
+*/ // TODO: add a different flags to support ACCAFF, ACCDUR
    for (i=0; i<6; i++) 
      if (spell->applies[i].appl_num != -1) {
        af.spell = spell->serial;
@@ -356,7 +503,7 @@ ACMD(do_cast)
        af.bitvector[0] = spell->applies[i].appl_num < NUM_APPLIES ? 0 : 
                       (1 << (spell->applies[i].appl_num - NUM_APPLIES));
        af.location = spell->applies[i].appl_num < NUM_APPLIES ?  spell->applies[i].appl_num : APPLY_NONE;
-       affect_join (vict, &af, IS_SPELL_ACCDUR(spell->flags), FALSE, IS_SPELL_ACCAFF(spell->flags), FALSE); 
+//       affect_join (vict, &af, IS_SPELL_ACCDUR(spell->flags), FALSE, IS_SPELL_ACCAFF(spell->flags), FALSE); 
        rts_code = TRUE; 
      }
 

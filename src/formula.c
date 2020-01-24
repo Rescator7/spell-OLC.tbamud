@@ -17,7 +17,7 @@
 #include "db.h"
 #include "formula.h"
 
-#define DEBUG_FORMULA
+//#define DEBUG_FORMULA
 
 void add_to_formula (struct formula **head_formula, int command, int value)
 {

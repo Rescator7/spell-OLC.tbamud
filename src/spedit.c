@@ -16,7 +16,8 @@ void cleanup_olc (struct descriptor_data *d, byte cleanup_type);
 extern const char *apply_types[];
 extern const char *affected_bits[];
 extern const char *pc_class_types[];
-extern const char *spell_flags[];
+extern const char *targ_flags[];
+extern const char *mag_flags[];
 extern const char *position_types[];
 extern struct descriptor_data *descriptor_list;
 int is_abbrev (const char *arg1, const char *arg2);
@@ -86,7 +87,7 @@ int find_spell_by_name (struct descriptor_data *d, char *name)
   return 0;
 }
 
-char *spedit_listflags (int flags) {
+char *spedit_list_targ_flags (int flags) {
   char buf[2048];
 
   int i;
@@ -97,7 +98,23 @@ char *spedit_listflags (int flags) {
     buf[0] = '\0';
     for (i=0; i<NUM_SPELL_FLAGS; i++)
       if (flags & (1 << i))
-        sprintf (buf, "%s%s ", buf, spell_flags [i]);
+        sprintf (buf, "%s%s ", buf, targ_flags [i]);
+  }
+  return (strdup (buf));
+}
+
+char *spedit_list_mag_flags (int flags) {
+  char buf[2048];
+
+  int i;
+
+  if (flags == 0)
+    strcpy (buf, "NONE");
+  else {
+    buf[0] = '\0';
+    for (i=0; i<NUM_MAG; i++)
+      if (flags & (1 << i))
+        sprintf (buf, "%s%s ", buf, mag_flags [i]);
   }
   return (strdup (buf));
 }
@@ -188,21 +205,38 @@ void spedit_minpos_menu (struct descriptor_data *d) {
   OLC_MODE(d) = SPEDIT_GET_MINPOS;
 }
 
-void spedit_flags_menu (struct descriptor_data *d) {
+void spedit_targ_flags_menu (struct descriptor_data *d) {
   char buf[2048];
 
   int i;
-  char *spellflags;
+  char *str_targ_flags;
 
-  spellflags = spedit_listflags (OLC_SPELL(d)->flags);
-  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, spellflags);
+  str_targ_flags = spedit_list_targ_flags (OLC_SPELL(d)->targ_flags);
+  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, str_targ_flags);
   for (i=0; i < NUM_SPELL_FLAGS; i++)
     sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel,
-                   spell_flags [i], (i + 1) % 4 ? "" : "\r\n" );
+                   targ_flags [i], (i + 1) % 4 ? "" : "\r\n" );
   sprintf (buf, "%s%s\r\nEnter choice (0 to quit) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
-  free (spellflags);
-  OLC_MODE(d) = SPEDIT_SHOW_SPELL_FLAGS;
+  free (str_targ_flags);
+  OLC_MODE(d) = SPEDIT_SHOW_TARG_FLAGS;
+}
+
+void spedit_mag_flags_menu (struct descriptor_data *d) {
+  char buf[2048];
+
+  int i;
+  char *str_mag_flags;
+
+  str_mag_flags = spedit_list_mag_flags (OLC_SPELL(d)->mag_flags);
+  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, str_mag_flags);
+  for (i=0; i < NUM_MAG; i++)
+    sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel,
+                   mag_flags [i], (i + 1) % 4 ? "" : "\r\n" );
+  sprintf (buf, "%s%s\r\nEnter choice (0 to quit) : ", buf, nrm);
+  send_to_char (d->character, "%s", buf);
+  free (str_mag_flags);
+  OLC_MODE(d) = SPEDIT_SHOW_MAG_FLAGS;
 }
 
 void spedit_choose_apply (struct descriptor_data *d) {
@@ -241,11 +275,13 @@ void spedit_assignement_menu (struct descriptor_data *d) {
 void spedit_main_menu (struct descriptor_data *d) {
   char buf[2048];
 
-  char *spellflags;
+  char *str_targ_flags;
+  char *str_mag_flags;
   struct str_spells *Q;
 
   Q = OLC_SPELL(d);
-  spellflags = spedit_listflags (Q->flags);
+  str_targ_flags = spedit_list_targ_flags (Q->targ_flags);
+  str_mag_flags = spedit_list_mag_flags (Q->mag_flags);
 
   get_char_colors (d->character);
 
@@ -260,14 +296,15 @@ void spedit_main_menu (struct descriptor_data *d) {
                 "%sS%s) Status            : %s%s\r\n"  
                 "%s1%s) Name              : %s%s\r\n"
                 "%s2%s) Min position      : %s%s\r\n"
-                "%s3%s) Spell FLAGS       : %s%s\r\n"
-                "%s4%s) Damages           : %s%s %s(%s%4d%s)\r\n"
-                "%s5%s) Pulse delay       : %s%s\r\n"
-                "%s6%s) Effectiveness %%   : %s%s\r\n"
-                "%s7%s) Menu -> Protection from\r\n"
-                "%s8%s) Menu -> Applies\r\n"
-                "%s9%s) Menu -> Script\r\n" 
-                "%sA%s) Menu -> Assignement\r\n"
+                "%s3%s) Target FLAGS      : %s%s\r\n"
+                "%s4%s) Magic FLAGS       : %s%s\r\n"
+                "%s5%s) Damages           : %s%s %s(%s%4d%s)\r\n"
+                "%s6%s) Pulse delay       : %s%s\r\n"
+                "%s7%s) Effectiveness %%   : %s%s\r\n"
+                "%s8%s) Menu -> Protection from\r\n"
+                "%s9%s) Menu -> Applies\r\n"
+                "%sA%s) Menu -> Script\r\n" 
+                "%sB%s) Menu -> Assignement\r\n"
                 "%sQ%s) Quit\r\n\r\n"
                 "%sEnter choice : ",
                  nrm, cyn, OLC_NUM(d), nrm, prog ? red : grn, nrm, cyn, (Q->type == SPELL) ? "SPELL" : "SKILL", nrm,
@@ -276,7 +313,8 @@ void spedit_main_menu (struct descriptor_data *d) {
                  prog ? red : grn, nrm, yel, Q->name ? Q->name : "Undefined", 
                  prog ? red : grn, nrm, cyn, ((Q->min_pos >= 0) && (Q->min_pos < NUM_CHAR_POSITION)) ? 
                               position_types [Q->min_pos] : "<BUGGED>",   
-                 prog ? red : grn, nrm, cyn, spellflags,
+                 prog ? red : grn, nrm, cyn, str_targ_flags,
+                 prog ? red : grn, nrm, cyn, str_mag_flags,
                  prog ? red : grn, nrm, cyn, Q->damages ? Q->damages : "<N/A>", nrm, cyn, Q->max_dam, nrm,  
                  prog ? red : grn, nrm, cyn, Q->delay ? Q->delay : "<N/A>",
                  prog ? red : grn, nrm, cyn, Q->effectiveness ? Q->effectiveness : "<N/A>",
@@ -287,7 +325,8 @@ void spedit_main_menu (struct descriptor_data *d) {
                  grn, nrm,
                  nrm);
   send_to_char (d->character, "%s", buf);
-  free (spellflags);
+  free (str_targ_flags);
+  free (str_mag_flags);
   OLC_MODE (d) = SPEDIT_MAIN_MENU;
 }
 
@@ -361,7 +400,8 @@ void spedit_init_new_spell (struct str_spells *spell)
  spell->status   = unavailable;
  spell->type     = 'P';
  spell->name     = strdup ("Undefined");
- spell->flags    = 0;
+ spell->targ_flags = 0;
+ spell->mag_flags = 0;
  spell->min_pos  = 0;
  spell->max_dam  = 0;
  spell->effectiveness = NULL;
@@ -432,7 +472,7 @@ void boot_spells (void)
  while (!feof(fp)) {
     ret = fscanf (fp, "%d ", &fct);
     if (!save && (fct != 1)) {
-      mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: attemp to assign value to empty Q");
+      mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: attemp to assign value to Q == (null)");
       abort();
     }
     switch (fct) {
@@ -442,8 +482,8 @@ void boot_spells (void)
                  save = 1;
                CREATE (Q, struct str_spells, 1);
                spedit_init_new_spell (Q);
-               ret = fscanf (fp, "%c %d %d %d %d %d\n", &Q->type, &Q->serial, &Q->status,
-                             &Q->flags, &Q->min_pos, &Q->max_dam);
+               ret = fscanf (fp, "%c %d %d %d %d %d %d\n", &Q->type, &Q->serial, &Q->status,
+                             &Q->targ_flags, &Q->mag_flags, &Q->min_pos, &Q->max_dam);
                break;
       case 2 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0'; 
@@ -521,7 +561,7 @@ void boot_spells (void)
     } 
  }
 
- if (save == 1) 
+ if (save == 1)
    spedit_save_internally (Q); 
  else
    mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: No spells available!");
@@ -547,8 +587,8 @@ void spedit_save_to_disk (void)
    return;
  }
  for (r = list_spells; r; r = r->next) {
-   sprintf (buf, "01 %c %d %d %d %d %d\n",
-                  r->type, r->serial, r->status, r->flags, r->min_pos, r->max_dam);
+   sprintf (buf, "01 %c %d %d %d %d %d %d\n",
+                  r->type, r->serial, r->status, r->targ_flags, r->mag_flags, r->min_pos, r->max_dam);
    if (r->name)
      sprintf (buf, "%s02 %s\n", buf, r->name);
 
@@ -894,14 +934,23 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
            else
              OLC_SPELL(d)->min_pos = x - 1;
          break;   
-    case SPEDIT_SHOW_SPELL_FLAGS : 
+    case SPEDIT_SHOW_TARG_FLAGS : 
          if (!(x = atoi (arg))) break;
          else 
             if ( (x < 0) || (x > NUM_SPELL_FLAGS) ) 
               send_to_char (d->character, "Invalid choice!\r\n");
             else
-              OLC_SPELL(d)->flags ^= (1 << (x - 1));
-         spedit_flags_menu (d);
+              OLC_SPELL(d)->targ_flags ^= (1 << (x - 1));
+         spedit_targ_flags_menu (d);
+         return;
+    case SPEDIT_SHOW_MAG_FLAGS:
+         if (!(x = atoi (arg))) break;
+         else 
+            if ( (x < 0) || (x > NUM_MAG) ) 
+              send_to_char (d->character, "Invalid choice!\r\n");
+            else
+              OLC_SPELL(d)->mag_flags ^= (1 << (x - 1));
+         spedit_mag_flags_menu (d);
          return;
     case SPEDIT_IMMUNE_MENU :
          if (!(x = atoi (arg))) break;
@@ -952,22 +1001,25 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                      return;
           case '2' : spedit_minpos_menu (d);
                      return;
-          case '3' : spedit_flags_menu (d);
+          case '3' : spedit_targ_flags_menu (d);
                      return;
-          case '4' : send_to_char (d->character, "Damages : ");
+          case '4' : spedit_mag_flags_menu (d);
+                     return;
+          case '5' : send_to_char (d->character, "Damages : ");
                      OLC_MODE(d) = SPEDIT_GET_DAMAGES;
                      return; 
-          case '5' : send_to_char (d->character, "Passes (10 passes = 1 sec) : ");
+          case '6' : send_to_char (d->character, "Passes (10 passes = 1 sec) : ");
                      OLC_MODE(d) = SPEDIT_GET_DELAY;
                      return;
-          case '6' : send_to_char (d->character, "%% of effectiveness : ");
+          case '7' : send_to_char (d->character, "%% of effectiveness : ");
                      OLC_MODE(d) = SPEDIT_GET_EFFECTIVENESS;
                      return;
-          case '7' : spedit_immune_menu (d);
+          case '8' : spedit_immune_menu (d);
                      return; 
-          case '8' : spedit_apply_menu (d);
+          case '9' : spedit_apply_menu (d);
                      return;
-          case '9' : page_string (d, OLC_SPELL(d)->script, 1);
+          case 'a' :
+          case 'A' : page_string (d, OLC_SPELL(d)->script, 1);
                      d->backstr  = OLC_SPELL(d)->script ?
                                    strdup(OLC_SPELL(d)->script) : NULL;
                      d->str      = &OLC_SPELL(d)->script;
@@ -975,7 +1027,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                      d->mail_to  = 0;
                      OLC_VAL(d)  = 1;
                      return;
-          case 'a' :
+          case 'b' :
           case 'B' : spedit_assign_menu (d);
                      return;
           case 't' : 

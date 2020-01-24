@@ -956,17 +956,41 @@ const char *ibt_bits[] = {
 
 
 /* spells flags used by spedit OLC */
-const char *spell_flags[] =
+const char *targ_flags[] =
 {
- "OBJ",
- "SELF",
+ "IGNORE",
+ "CHAR_ROOM",
+ "CHAR_WORLD",
+ "FIGHT_SELF",
+ "FIGHT_VICT",
+ "SELF_ONLY",
+ "NOT_SELF",
+ "OBJ_INV",
+ "OBJ_ROOM",
+ "OBJ_WORLD",
+ "OBJ_EQUIP",
  "GROUP",
- "VICTIM",
- "(VICTIM GROUP)",
- "ROOM",
- "ACCDUR",
- "ACCMOD",
- "!BUG!"
+ "GROUP_VICT"
+};
+
+
+/* Magic aff flags used by spedit OLC system */
+const char *mag_flags[] = 
+{
+"DAMAGE",
+"AFFECTS",
+"UNAFFECTS",
+"POINTS",
+"ALTER_OBJS",
+"GROUPS",
+"MASSES",
+"AREAS",
+"MAG_SUMMONS",
+"CREATIONS",
+"MANUAL",
+"ROOMS",
+"ACCDUR",
+"ACCMOD" 
 };
 
 /* --- End of constants arrays. --- */

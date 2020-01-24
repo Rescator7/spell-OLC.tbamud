@@ -405,20 +405,21 @@ extern const char *nrm, *grn, *cyn, *yel, *red;
 #define SPEDIT_GET_NUMPRAC              9
 #define SPEDIT_GET_NAME                 10
 #define SPEDIT_ASSIGN_MENU              11
-#define SPEDIT_SHOW_SPELL_FLAGS         12
-#define SPEDIT_IMMUNE_MENU              13
-#define SPEDIT_GET_SPELL_NUM            14
-#define SPEDIT_GET_DAMAGES              15
-#define SPEDIT_GET_PROTDUR              16
-#define SPEDIT_GET_STATUS               17
-#define SPEDIT_CONFIRM_EDIT             18
-#define SPEDIT_GET_EFFECTIVENESS        19
-#define SPEDIT_GET_MINPOS               20
-#define SPEDIT_GET_MAXDAM               21
-#define SPEDIT_GET_RESIST               22
-#define SPEDIT_GET_DELAY                23
-#define SPEDIT_GET_SCRIPT               24
-#define SPEDIT_GET_TYPE                 25
+#define SPEDIT_SHOW_TARG_FLAGS          12
+#define SPEDIT_SHOW_MAG_FLAGS           13
+#define SPEDIT_IMMUNE_MENU              14
+#define SPEDIT_GET_SPELL_NUM            15
+#define SPEDIT_GET_DAMAGES              16
+#define SPEDIT_GET_PROTDUR              17
+#define SPEDIT_GET_STATUS               18
+#define SPEDIT_CONFIRM_EDIT             19
+#define SPEDIT_GET_EFFECTIVENESS        20
+#define SPEDIT_GET_MINPOS               21
+#define SPEDIT_GET_MAXDAM               22
+#define SPEDIT_GET_RESIST               23
+#define SPEDIT_GET_DELAY                24
+#define SPEDIT_GET_SCRIPT               25
+#define SPEDIT_GET_TYPE                 26
 
 
 int  save_config( IDXTYPE nowhere );
