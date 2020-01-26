@@ -17,7 +17,7 @@
 #include "db.h"
 #include "formula.h"
 
-//#define DEBUG_FORMULA
+#define DEBUG_FORMULA
 
 void add_to_formula (struct formula **head_formula, int command, int value)
 {
@@ -40,12 +40,14 @@ void add_to_formula (struct formula **head_formula, int command, int value)
 
 void free_formula (struct formula **head_formula) 
 {
- struct formula *Q, *next = NULL;
+ struct formula *q = *head_formula, *n = NULL;
 
- for (Q = *head_formula; Q; Q = next) {
-   next = Q->next;
-   free (Q);
+ while (q) {
+   n = q->next;
+  free (q);
+  q = n;
  }
+
  *head_formula = NULL;
 }
 
@@ -109,20 +111,20 @@ void send_formula_error (struct char_data *ch, int error, int spell_vnum, int sy
 
  if (syserr)
    sprintf (buf, "SYSERR: got error (%d) from spell (%d) : ", error, spell_vnum);
- else
-   strcpy (buf, "SYNTAX : ");
+
  if ((error >= 5000) && (error <= 5008))
-   strcat (buf, error_5000 [error-5000]);
+   snprintf(buf, sizeof(buf), "SYNTAX: %s", error_5000 [error-5000]);
  else
    if ((error >= 9900) || (error < 6000))
-      sprintf (buf, "%s%s can't follow %s", buf, 
-             ((error/100) == CODE_DIGIT) ? "A number" : list_codes[error/100],
+      snprintf (buf, sizeof(buf), "SYNTAX: %s can't follow %s", 
+             ((error/100) == CODE_DIGIT) ? "a number" : list_codes[error/100],
              ((error%100) == CODE_DIGIT) ? "a number" : list_codes[error%100]);
-   else if (error >= 7000)
-          sprintf (buf, "%sA formula can't end by %s", buf, list_codes[error-7000]);
-        else if (error >= 6000)
-               sprintf (buf, "%sA formula can't start by %s", buf,
-                             list_codes[error-6000]);
+   else 
+   if (error >= 7000)
+      snprintf (buf, sizeof(buf), "SYNTAX: A formula can't end by %s", list_codes[error-7000]);
+   else if (error >= 6000)
+      snprintf (buf, sizeof(buf), "SYNTAX: A formula can't start by %s", list_codes[error-6000]);
+
  if (syserr == TRUE) 
    mudlog (BRF, LVL_BUILDER, TRUE, "%s", buf);
  else {
@@ -143,13 +145,9 @@ void show_formula (struct char_data *ch, struct formula *head_formula)
    if (Q->command == CODE_DIGIT) 
      sprintf (buf, "%s%d", buf, Q->value);
    else
-     sprintf (buf, "%s%s", buf, ((Q->command    == CODE_ART_SUB) &&
-                                 (Q->next) && 
-                                 (Q->next->sign == -1)) ? "+" :
-                                ((Q->command    == CODE_ART_ADD) &&
-                                 (Q->next) &&  
-                                 (Q->next->sign == -1)) ? "-" : 
-                                 list_codes[Q->command]);
+     sprintf (buf, "%s%s", buf, ((Q->command == CODE_ART_SUB) && (Q->next) && 
+                                 (Q->next->sign == -1)) ? "+" : ((Q->command == CODE_ART_ADD) &&
+                                 (Q->next) &&  (Q->next->sign == -1)) ? "-" : list_codes[Q->command]);
   }
   sprintf (buf, "%s, nodes: %d\r\n", buf, cpt);
   send_to_char (ch, "%s", buf);
@@ -224,6 +222,21 @@ int remove_brace (struct formula **head_formula, struct formula *C,
    show_formula(ch, *head_formula);
 #endif
    return 1;
+ }
+
+ // alias 12
+ if (B->command == CODE_ART_OBRACE) {
+   B->command = CODE_DIGIT;
+/*
+   if (C->command == CODE_ART_CBRACE)
+     remove_node (head_formula, C);
+
+   if ((A->command == CODE_ART_ADD) || (A->command == CODE_ART_SUB)) {
+     if (A->command == CODE_ART_SUB)
+      B->sign = -1;
+     remove_node (head_formula, A);
+   }
+*/
  }
 
  if ((A->command == CODE_ART_OBRACE) || (A->command == CODE_ART_RAND)) {
@@ -412,7 +425,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
  int i = 0, num = 0, otype_act  = 0, type_act = 0, self_vict = -1; 
  int cpt_obrace = 0, cpt_cbrace = 0, cpt_if   = 0, cpt_else  = 0;
 
- sprintf (buf, "%s ", cmd);
+ snprintf (buf, sizeof(buf), "%s ", cmd);
 
  if (strstr(buf, "+++")) {
    *rts_code = ERROR_5007;
@@ -447,8 +460,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
  for (i=0; i<strlen(buf); i++) {
    if (type_act)
      otype_act = type_act;
-   if (!(type_act = get_formula_typeact (self, buf, &i, spell_vnum, syserr)) &&
-        (i<strlen(buf)-1)) 
+   if (!(type_act = get_formula_typeact (self, buf, &i, spell_vnum, syserr)) && (i<strlen(buf)-1)) 
      continue;              
    if (type_act == -1) {
      *rts_code = ERROR_5000;

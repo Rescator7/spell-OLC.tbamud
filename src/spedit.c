@@ -28,16 +28,6 @@ int last_serial = 0;
 
 char *UNDEF_SPELL = "Undefined";
 
-char *get_spell_name (int vnum) 
-{
- struct str_spells *ptr = NULL;
-
- for (ptr = list_spells; ptr; ptr = ptr->next)
-   if (ptr->serial == vnum)
-     return (ptr->name);
- return (UNDEF_SPELL);
-}
-
 /* will convert a string to upper case... but, not stuff in quote " " */
 void strxupr (char *str) {
   int i, quote = 0;
@@ -61,16 +51,23 @@ char *IS_SPELL_OLCING (int serial)
  return NULL;
 }
 
-int find_spell_by_serial (struct descriptor_data *d, int serial)
+char *get_spell_name(int serial)
+{
+ struct str_spells *ptr;
+
+ for (ptr = list_spells; ptr; ptr = ptr->next)
+   if (ptr->serial == serial)
+     return ptr->name;
+ return UNDEF_SPELL;
+}
+
+int find_spell_by_serial (int serial)
 {
   struct str_spells *ptr;
 
   for (ptr = list_spells; ptr; ptr = ptr->next)
-    if (ptr->serial == serial) {
-      free(OLC_STORAGE(d));
-      OLC_STORAGE(d) = strdup(ptr->name);
+    if (ptr->serial == serial) 
       return serial;
-    }
   return 0;
 }
 
@@ -78,13 +75,26 @@ int find_spell_by_name (struct descriptor_data *d, char *name)
 {
   struct str_spells *ptr;
 
-  for (ptr = list_spells; ptr; ptr = ptr->next)
-    if (is_abbrev(name, ptr->name)) {
-      free(OLC_STORAGE(d));
-      OLC_STORAGE(d) = strdup(ptr->name); // we nedds the full name, not just an abbreviation
-      return ptr->serial;
+  int serial = 0;
+
+  if (OLC_SEARCH(d))
+    ptr = OLC_SEARCH(d);
+  else
+    ptr = list_spells;
+
+  while (ptr) {
+    if (strstr(ptr->name, name)) {
+      if (serial == 0)
+        serial = ptr->serial;
+      else {
+        OLC_SEARCH(d) = ptr; 
+        return serial;
+      }
     }
-  return 0;
+    ptr = ptr->next;
+  }
+  OLC_SEARCH(d) = NULL;
+  return serial;
 }
 
 char *spedit_list_targ_flags (int flags) {
@@ -169,7 +179,7 @@ void spedit_apply_menu (struct descriptor_data *d) {
   OLC_MODE(d) = SPEDIT_APPLY_MENU;
 }
 
-void spedit_immune_menu (struct descriptor_data *d) {
+void spedit_protection_menu (struct descriptor_data *d) {
   char buf[2048];
 
   int i;
@@ -188,7 +198,7 @@ void spedit_immune_menu (struct descriptor_data *d) {
   }
   sprintf (buf, "%s\r\n%sEnter choice (0 to quit) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
-  OLC_MODE(d) = SPEDIT_IMMUNE_MENU;
+  OLC_MODE(d) = SPEDIT_PROTECTION_MENU;
 }
 
 void spedit_minpos_menu (struct descriptor_data *d) {
@@ -249,11 +259,11 @@ void spedit_choose_apply (struct descriptor_data *d) {
     sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel, 
                    apply_types [i], (i + 1) % 4 ? "" : "\r\n" );
   sprintf (buf, "%s\r\n\r\n%s-- AFFECTS : \r\n", buf, nrm);
-  cpt = i; 
-  for (i=cpt; i < cpt + NUM_AFF_FLAGS + NUM_CLASSES; i++)
-    sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel, affected_bits [i - NUM_APPLIES],
-                  (i + 1) % 4 ? "" : "\r\n");
-  sprintf (buf, "%s%s\r\n\r\nEnter choice (0 to quit) : ", buf, nrm);
+  cpt = i + 1; 
+  for (i=cpt; i < cpt + NUM_AFF_FLAGS; i++)
+    sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i, nrm, yel, affected_bits [i - NUM_APPLIES],
+                  (i - cpt + 1) % 4 ? "" : "\r\n");
+  sprintf (buf, "%s%s\r\n\r\nEnter choice (0 to quit, 'r' to remove) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_APPLY;
 }
@@ -267,7 +277,7 @@ void spedit_assignement_menu (struct descriptor_data *d) {
   for (i=0; i < NUM_CLASSES; i++)
     sprintf (buf, "%s%s%2d%s) %s%-13s%s", buf, grn, i + 1, nrm, yel, pc_class_types [i],
                   (i + 1) % 5 ? "" : "\r\n");  
-  sprintf (buf, "%s%s\r\n\r\nEnter choice (0 to quit, -1 to remove) : ", buf, nrm);
+  sprintf (buf, "%s%s\r\n\r\nEnter choice (0 to quit, 'r' to remove) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_ASSIGNEMENT;
 }
@@ -661,7 +671,7 @@ int spedit_setup (struct descriptor_data *d)
  
  if (OLC_STORAGE(d)) {
    if (is_number(OLC_STORAGE(d))) 
-     serial = find_spell_by_serial(d, atoi(OLC_STORAGE(d))); 
+     serial = find_spell_by_serial(atoi(OLC_STORAGE(d))); 
    else
      serial = find_spell_by_name(d, OLC_STORAGE(d));
 
@@ -671,14 +681,15 @@ int spedit_setup (struct descriptor_data *d)
      return 0;
    } else {
        if ((str = IS_SPELL_OLCING (serial))) {
-         sprintf (buf, "This spell '%s' (serial: %d) is already edited by %s.\r\n", OLC_STORAGE(d), serial, str);
+         sprintf (buf, "This spell '%s' (serial: %d) is already edited by %s.\r\n", get_spell_name(serial), serial, str);
          send_to_char (d->character, "%s", buf);  
          cleanup_olc (d, CLEANUP_ALL);
          return 0;
        }
 
        OLC_NUM(d) = serial;
-       sprintf (buf, "Do you want to edit '%s' (serial: %d)? (y/n): ", OLC_STORAGE(d), serial);
+       sprintf (buf, "Do you want to edit '%s' (serial: %d)? (y/n%s): ", get_spell_name(serial), serial, 
+                     OLC_SEARCH(d) ? ", q" : "");
        send_to_char (d->character, "%s", buf);  
        OLC_MODE(d) = SPEDIT_CONFIRM_EDIT;
        return 1;
@@ -753,9 +764,30 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                              } else 
                                  send_to_char (d->character, "Duration : ");
                              return;
-    case SPEDIT_GET_SPELL_NUM : OLC_SPELL(d)->protfrom[OLC_VAL(d)].prot_num = atoi(arg);
-                                send_to_char (d->character, "Duration : ");
-                                OLC_MODE(d) = SPEDIT_GET_PROTDUR;
+    case SPEDIT_GET_SPELL_NUM : if ((*arg == 'r') || (*arg == 'R')) {
+                                  OLC_SPELL(d)->protfrom[OLC_VAL(d)].prot_num = -1;
+                                  if (OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration)
+                                    free (OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration);
+                                  OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration = NULL;
+                                  if (OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist)
+                                    free (OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist);
+                                  OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist = NULL;
+                                  spedit_protection_menu (d);
+                                  return; 
+                                }
+                                if (!atoi(arg)) 
+                                  spedit_protection_menu (d);
+                                else {
+                                  int serial = atoi(arg);
+                                  if (!find_spell_by_serial(serial)) {
+                                    send_to_char (d->character, "Invalid: spell not found!\r\n"
+                                                                "\r\nSpell VNUM (0 to quit, 'r' to remove) : ");
+                                  } else {
+                                      OLC_SPELL(d)->protfrom[OLC_VAL(d)].prot_num = serial;
+                                      send_to_char (d->character, "Duration : ");
+                                      OLC_MODE(d) = SPEDIT_GET_PROTDUR;
+                                    }
+                                }
                                 return; 
     case SPEDIT_GET_NUMPRAC: value = formula_interpreter (d->character, 
                                      d->character, OLC_NUM(d), FALSE,
@@ -795,7 +827,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                                   free (OLC_SPELL(d)->applies[OLC_VAL(d)].duration);
                                 OLC_SPELL(d)->applies[OLC_VAL(d)].duration = 
                                   (arg && *arg) ? strdup (arg) : strdup("0");
-                                spedit_choose_apply (d);
+                                spedit_apply_menu (d);
                               } else 
                                   send_to_char (d->character, "Duration : ");
                               return;
@@ -835,7 +867,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                                   free (OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist);
                                 OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist = 
                                   (arg && *arg) ? strdup (arg) : strdup("0");
-                                spedit_immune_menu(d);
+                                spedit_protection_menu(d);
                               } else  
                                   send_to_char (d->character, "Resist %% : ");
                               return;
@@ -879,18 +911,31 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                } 
            return; 
     case SPEDIT_SHOW_APPLY : 
+           if ((*arg == 'r') || (*arg == 'R')) {
+             OLC_SPELL(d)->applies[OLC_VAL(d)].appl_num = - 1;
+             if (OLC_SPELL(d)->applies[OLC_VAL(d)].modifier)
+               free (OLC_SPELL(d)->applies[OLC_VAL(d)].modifier);
+             OLC_SPELL(d)->applies[OLC_VAL(d)].modifier = NULL;
+             if (OLC_SPELL(d)->applies[OLC_VAL(d)].duration)
+               free (OLC_SPELL(d)->applies[OLC_VAL(d)].duration);
+             OLC_SPELL(d)->applies[OLC_VAL(d)].duration = NULL;
+             spedit_apply_menu (d);
+             return; 
+           }
+
            if (!(x = atoi(arg))) 
              spedit_apply_menu (d);
            else
-             if ( (x < 0) || (x > NUM_APPLIES + NUM_AFF_FLAGS + NUM_CLASSES) ) {
+             if ((x < 0) || (x > NUM_APPLIES + NUM_AFF_FLAGS)) {
                send_to_char (d->character, "Invalid choice!\r\n");
                spedit_choose_apply (d);
              } else {
-                  OLC_SPELL(d)->applies[OLC_VAL(d)].appl_num = x - 1;
                   if (x <= NUM_APPLIES) {
+                    OLC_SPELL(d)->applies[OLC_VAL(d)].appl_num = x - 1;
                     send_to_char (d->character, "Modifier : ");
                     OLC_MODE(d) = SPEDIT_GET_MODIF;
                   } else {
+                      OLC_SPELL(d)->applies[OLC_VAL(d)].appl_num = x;
                       if (OLC_SPELL(d)->applies[OLC_VAL(d)].modifier)
                         free (OLC_SPELL(d)->applies[OLC_VAL(d)].modifier);
                       OLC_SPELL(d)->applies[OLC_VAL(d)].modifier = strdup("0"); 
@@ -900,28 +945,29 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                }
            return; 
     case SPEDIT_SHOW_ASSIGNEMENT :
+           if ((*arg == 'r') || (*arg == 'R')) {
+             OLC_SPELL(d)->assign[OLC_VAL(d)].class_num = -1;
+             OLC_SPELL(d)->assign[OLC_VAL(d)].level = 0;
+             if (OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac)
+               free (OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac);
+             OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac = NULL;
+             if (OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana)
+               free (OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana);
+             OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana = NULL;
+             spedit_assign_menu(d);
+             return;
+           }
            if (!(x = atoi (arg))) 
              spedit_assign_menu (d);
-           else if ( (x < -2) || (x > NUM_CLASSES) ) {
-                  send_to_char (d->character, "Invalid choice!\r\n");
-                  spedit_assignement_menu (d);
-                }
-                else 
-                   if (x == -1) {
-                     OLC_SPELL(d)->assign[OLC_VAL(d)].class_num = -1;
-                     OLC_SPELL(d)->assign[OLC_VAL(d)].level = 0;
-                     if (OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac)
-                       free (OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac);
-                     OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac = NULL;
-                     if (OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana)
-                       free (OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana);
-                     OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana = NULL;
-                     spedit_assign_menu(d);
-                   } else {
-                       OLC_SPELL(d)->assign[OLC_VAL(d)].class_num = x - 1;
-                       send_to_char (d->character, "Level : ");
-                       OLC_MODE(d) = SPEDIT_GET_LEVEL;
-                     }
+           else 
+           if ((x < 1) || (x > NUM_CLASSES)) {
+             send_to_char (d->character, "Invalid choice!\r\n");
+             spedit_assignement_menu (d);
+           } else {
+               OLC_SPELL(d)->assign[OLC_VAL(d)].class_num = x - 1;
+               send_to_char (d->character, "Level : ");
+               OLC_MODE(d) = SPEDIT_GET_LEVEL;
+             }
            return;
     case SPEDIT_GET_MINPOS :
          if (!(x = atoi(arg))) break;
@@ -952,16 +998,16 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
               OLC_SPELL(d)->mag_flags ^= (1 << (x - 1));
          spedit_mag_flags_menu (d);
          return;
-    case SPEDIT_IMMUNE_MENU :
+    case SPEDIT_PROTECTION_MENU :
          if (!(x = atoi (arg))) break;
          else 
            if ( (x < 0) || (x > 6) ) {
              send_to_char (d->character, "Invalid choice!\r\n");
-             spedit_immune_menu (d);
+             spedit_protection_menu (d);
              return;
            }
          OLC_VAL(d) = x - 1;
-         send_to_char (d->character, "Spell number : ");
+         send_to_char (d->character, "Spell VNUM (0 to quit, 'r' to remove) : ");
          OLC_MODE(d) = SPEDIT_GET_SPELL_NUM;
          return;   
     case SPEDIT_CONFIRM_EDIT : 
@@ -969,7 +1015,10 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
            send_to_char (d->character, "\r\n");
            spedit_setup2 (d);
          } else
-             cleanup_olc (d, CLEANUP_ALL); 
+           if (OLC_SEARCH(d) && (*arg != 'q') && (*arg != 'Q')) {
+             spedit_setup (d);
+           } else
+               cleanup_olc (d, CLEANUP_ALL); 
          return; 
     case SPEDIT_MAIN_MENU :
         if (OLC_SPELL(d)->function && *arg != 'q' && *arg != 'Q' 
@@ -1014,7 +1063,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
           case '7' : send_to_char (d->character, "%% of effectiveness : ");
                      OLC_MODE(d) = SPEDIT_GET_EFFECTIVENESS;
                      return;
-          case '8' : spedit_immune_menu (d);
+          case '8' : spedit_protection_menu (d);
                      return; 
           case '9' : spedit_apply_menu (d);
                      return;
@@ -1069,7 +1118,7 @@ ACMD(do_spedit) {
   if (*argument)
     OLC_STORAGE(d) = strdup(argument);
   else
-    OLC_STORAGE(d) = NULL;
+    OLC_STORAGE(d) = NULL;  // remove? olc_cleanup is supposed to remove and NULL the pointer
  
   STATE(d) = CON_SPEDIT;
 

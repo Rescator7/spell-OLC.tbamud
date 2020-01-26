@@ -97,6 +97,7 @@ struct oasis_olc_data {
   struct config_data *config;    /* used for 'cedit'         */
   struct aq_data *quest;         /* used for 'qedit'         */
   struct str_spells *spell;      /* used for 'spedit'        */
+  struct str_spells *search;     /* used by 'spedit'         */
   struct extra_descr_data *desc; /* used in '[r|o|m]edit'    */
   struct social_messg *action;   /* Aedit uses this one      */
   struct trig_data *trig;
@@ -141,6 +142,7 @@ extern const char *nrm, *grn, *cyn, *yel, *red;
 #define OLC_EXIT(d)    (OLC_ROOM(d)->dir_option[OLC_VAL(d)])
 #define OLC_MSG(d)     (OLC(d)->m_type)
 #define OLC_SPELL(d)   (OLC(d)->spell)    /**< Spell structure. */ 
+#define OLC_SEARCH(d)  (OLC(d)->search) 
 
 /* Cleanup types. */
 #define CLEANUP_ALL		1	/* Free the whole lot.			*/
@@ -407,7 +409,7 @@ extern const char *nrm, *grn, *cyn, *yel, *red;
 #define SPEDIT_ASSIGN_MENU              11
 #define SPEDIT_SHOW_TARG_FLAGS          12
 #define SPEDIT_SHOW_MAG_FLAGS           13
-#define SPEDIT_IMMUNE_MENU              14
+#define SPEDIT_PROTECTION_MENU          14
 #define SPEDIT_GET_SPELL_NUM            15
 #define SPEDIT_GET_DAMAGES              16
 #define SPEDIT_GET_PROTDUR              17
