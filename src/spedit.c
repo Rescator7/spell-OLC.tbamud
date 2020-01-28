@@ -51,6 +51,36 @@ char *IS_SPELL_OLCING (int serial)
  return NULL;
 }
 
+int is_assign_set(struct str_spells *spell)
+{
+ int i;
+
+ for (i=0; i<NUM_CLASSES; i++) 
+   if (spell->assign[i].class_num != -1)
+     return 1;
+ return 0;
+}
+
+int is_prot_set(struct str_spells *spell)
+{
+ int i;
+
+ for (i=0; i<NUM_CLASSES; i++) 
+   if (spell->protfrom[i].prot_num != -1)
+     return 1;
+ return 0;
+}
+
+int is_apply_set(struct str_spells *spell)
+{
+ int i;
+
+ for (i=0; i<NUM_CLASSES; i++) 
+   if (spell->applies[i].appl_num != -1)
+     return 1;
+ return 0;
+}
+
 char *get_spell_name(int serial)
 {
  struct str_spells *ptr;
@@ -303,23 +333,23 @@ void spedit_main_menu (struct descriptor_data *d) {
 
   sprintf (buf, "%s-- Serial number     : [%s%5d%s]    %sT%s)ype : [%s%-6s%s]    "
                 "%sSpec_Prog : %s%s\r\n"
-                "%sS%s) Status            : %s%s\r\n"  
+                "%sS%s) %sStatus            : %s%s\r\n"  
                 "%s1%s) Name              : %s%s\r\n"
                 "%s2%s) Min position      : %s%s\r\n"
                 "%s3%s) Target FLAGS      : %s%s\r\n"
                 "%s4%s) Magic FLAGS       : %s%s\r\n"
                 "%s5%s) Damages           : %s%s %s(%s%4d%s)\r\n"
                 "%s6%s) Pulse delay       : %s%s\r\n"
-                "%s7%s) Effectiveness %%   : %s%s\r\n"
-                "%s8%s) Menu -> Protection from\r\n"
-                "%s9%s) Menu -> Applies\r\n"
-                "%sA%s) Menu -> Script\r\n" 
-                "%sB%s) Menu -> Assignement\r\n"
+                "%s7%s) %sEffectiveness %%   : %s%s\r\n"
+                "%s8%s) %sMenu -> Protection from\r\n"
+                "%s9%s) %sMenu -> Applies\r\n"
+                "%sA%s) %sMenu -> Script\r\n" 
+                "%sB%s) %sMenu -> Assignement\r\n"
                 "%sQ%s) Quit\r\n\r\n"
                 "%sEnter choice : ",
                  nrm, cyn, OLC_NUM(d), nrm, prog ? red : grn, nrm, cyn, (Q->type == SPELL) ? "SPELL" : "SKILL", nrm,
                  nrm, yel, Q->function ? "Yes" : "No", 
-                 grn, nrm, yel, (Q->status == available) ? "Available" : "Unavailable",
+                 grn, nrm, (Q->status == available) ? nrm : YEL, yel, (Q->status == available) ? "Available" : "Unavailable",
                  prog ? red : grn, nrm, yel, Q->name ? Q->name : "Undefined", 
                  prog ? red : grn, nrm, cyn, ((Q->min_pos >= 0) && (Q->min_pos < NUM_CHAR_POSITION)) ? 
                               position_types [Q->min_pos] : "<BUGGED>",   
@@ -327,11 +357,11 @@ void spedit_main_menu (struct descriptor_data *d) {
                  prog ? red : grn, nrm, cyn, str_mag_flags,
                  prog ? red : grn, nrm, cyn, Q->damages ? Q->damages : "<N/A>", nrm, cyn, Q->max_dam, nrm,  
                  prog ? red : grn, nrm, cyn, Q->delay ? Q->delay : "<N/A>",
-                 prog ? red : grn, nrm, cyn, Q->effectiveness ? Q->effectiveness : "<N/A>",
-                 prog ? red : grn, nrm, 
-                 prog ? red : grn, nrm,  
-                 prog ? red : grn, nrm,
-                 prog ? red : grn, nrm,
+                 prog ? red : grn, nrm, Q->effectiveness ? nrm : YEL, cyn, Q->effectiveness ? Q->effectiveness : "<N/A>",
+                 prog ? red : grn, nrm, is_prot_set(Q) ? bln : nrm,
+                 prog ? red : grn, nrm, is_apply_set(Q) ? bln : nrm, 
+                 prog ? red : grn, nrm, Q->script ? bln : nrm,
+                 prog ? red : grn, nrm, is_assign_set(Q) ? bln : YEL,
                  grn, nrm,
                  nrm);
   send_to_char (d->character, "%s", buf);

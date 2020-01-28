@@ -1358,7 +1358,7 @@ void parse_room(FILE *fl, int virtual_nr)
       new_descr->description = fread_string(fl, buf2);
       /* Fix for crashes in the editor when formatting. E-descs are assumed to
        * end with a \r\n. -Welcor */
-      {
+  //    {
       	char *end = strchr(new_descr->description, '\0');
       	if (end > new_descr->description && *(end-1) != '\n') {
       	  CREATE(end, char, strlen(new_descr->description)+3);
@@ -1366,7 +1366,7 @@ void parse_room(FILE *fl, int virtual_nr)
       	  free(new_descr->description);
       	  new_descr->description = end;
       	}
-      }
+   //   }
       new_descr->next = world[room_nr].ex_description;
       world[room_nr].ex_description = new_descr;
       break;

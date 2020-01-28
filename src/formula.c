@@ -16,6 +16,7 @@
 #include "spedit.h"
 #include "db.h"
 #include "formula.h"
+#include "string.h"
 
 #define DEBUG_FORMULA
 
@@ -51,8 +52,7 @@ void free_formula (struct formula **head_formula)
  *head_formula = NULL;
 }
 
-int get_formula_typeact (struct char_data *ch, char *str, int *ptr, int spell_vnum, 
-                         int syserr) 
+int get_formula_typeact (char *str, int *ptr) 
 {
  int cpt = 0;
 
@@ -73,12 +73,12 @@ int check_formula_syntax (int otype_act, int type_act)
 {
  // CHAR_TYPE[0][] can't follow [1][]
  const char *test [4][2] = {
- {"abcdefghjklmnopqstux",  "abcdefghjkloprstxz"},          // can follow: imnquvwy  
-                                                           //     !,-,+,*,rand(,self.,vict.,digit
- {"i",                     "abcdefghijkloprst"},           // '!' can follow mnquvwz = -,+,(,rand(,self.,vict., digit 
- {"yrz",                   "iquvwyz"},                     // digit, ')', variables CAN'T follow: 
-                                                           //             digit, !, (, rand(, self., vict., variables.
- {"vw",                    "abcdefghijklmnopqrstuvwxy"}    // self., vict. can follow z = variables.
+ {"abcdefghjklmnopqstuxA",  "abcdefghjkloprstxzB"},        // can follow: imnquvwy  
+                                                           //     !,-,+,(,rand(,self.,vict.,digit
+ {"i",                     "abcdefghijkloprstB"},          // '!' can follow mnquvwzA = -,+,(,rand(,self.,vict., digit, dice( 
+ {"ryz",                   "iquvwyzA"},                    // digit, ')', variables CAN'T follow: 
+                                                           //             digit, !, (, rand(, self., vict., variables, dice(.
+ {"vw",                    "abcdefghijklmnopqrstuvwxyAB"}  // self., vict. can follow z = variables.
  };
  int i;
 
@@ -87,7 +87,7 @@ int check_formula_syntax (int otype_act, int type_act)
      if (strchr (test[i][1], CHAR_CODE(type_act))) 
        return (otype_act * 100 + type_act);
      else
-       return (0); 
+       return 0; 
    }
  }
  return 0;
@@ -97,7 +97,7 @@ void send_formula_error (struct char_data *ch, int error, int spell_vnum, int sy
 {
  char buf[2048];
 
- char *error_5000[] = {
+ const char *error_5000[] = {
  "Unknown variable or operator",               /* 5000 */
  "it should have as much '(' and ')'",         /* 5001 */
  "it should have as much '?' and ':'",         /* 5002 */
@@ -106,13 +106,15 @@ void send_formula_error (struct char_data *ch, int error, int spell_vnum, int sy
  "A formula can't end by ':'",                 /* 5005 */
  "division by 0",                              /* 5006 */
  "Unsupported +++",                            /* 5007 */
- "Unsupported ---"                             /* 5008 */
+ "Unsupported ---",                            /* 5008 */
+ "it should have as much 'dice(' and ','",     /* 5009 */
+ "',' expected but not found"
  };                 
 
  if (syserr)
    sprintf (buf, "SYSERR: got error (%d) from spell (%d) : ", error, spell_vnum);
 
- if ((error >= 5000) && (error <= 5008))
+ if ((error >= 5000) && (error <= LAST_5K_ERROR))
    snprintf(buf, sizeof(buf), "SYNTAX: %s", error_5000 [error-5000]);
  else
    if ((error >= 9900) || (error < 6000))
@@ -120,8 +122,8 @@ void send_formula_error (struct char_data *ch, int error, int spell_vnum, int sy
              ((error/100) == CODE_DIGIT) ? "a number" : list_codes[error/100],
              ((error%100) == CODE_DIGIT) ? "a number" : list_codes[error%100]);
    else 
-   if (error >= 7000)
-      snprintf (buf, sizeof(buf), "SYNTAX: A formula can't end by %s", list_codes[error-7000]);
+   if (error >= ERROR_7000)
+      snprintf (buf, sizeof(buf), "SYNTAX: A formula can't end by %s", list_codes[error-ERROR_7000]);
    else if (error >= 6000)
       snprintf (buf, sizeof(buf), "SYNTAX: A formula can't start by %s", list_codes[error-6000]);
 
@@ -189,7 +191,7 @@ void remove_node (struct formula **head_formula, struct formula *ptr)
  free (ptr);
 }
 
-int remove_brace (struct formula **head_formula, struct formula *C, 
+int remove_brace (struct formula **head_formula, struct formula *C, // int * rts_code, 
                   struct char_data *ch)
 {
  struct formula *A, *B;
@@ -203,8 +205,8 @@ int remove_brace (struct formula **head_formula, struct formula *C,
 
  if (!A) {
   B->command = CODE_DIGIT;
-  if (C->command == CODE_ART_CBRACE)
-    remove_node (head_formula, C);
+
+  remove_node (head_formula, C);
 
 #ifdef DEBUG_FORMULA
    show_formula(ch, *head_formula);
@@ -224,21 +226,19 @@ int remove_brace (struct formula **head_formula, struct formula *C,
    return 1;
  }
 
- // alias 12
+ // fix alias 12
  if (B->command == CODE_ART_OBRACE) {
    B->command = CODE_DIGIT;
-/*
-   if (C->command == CODE_ART_CBRACE)
-     remove_node (head_formula, C);
 
-   if ((A->command == CODE_ART_ADD) || (A->command == CODE_ART_SUB)) {
-     if (A->command == CODE_ART_SUB)
-      B->sign = -1;
-     remove_node (head_formula, A);
-   }
-*/
+   remove_node (head_formula, C);
+
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
+   return 1;
  }
 
+ // remove typical (9) or rand(9)
  if ((A->command == CODE_ART_OBRACE) || (A->command == CODE_ART_RAND)) {
    if (A->command == CODE_ART_RAND)
      B->value = (B->sign == -1) ? 0 : rand_number(1, B->value);
@@ -250,6 +250,19 @@ int remove_brace (struct formula **head_formula, struct formula *C,
    show_formula(ch, *head_formula);
 #endif
    return 1; 
+ }
+
+ if (A->command == CODE_COMMA) {
+   B->value = dice(A->prev->value, B->value);
+   remove_node (head_formula, C);
+   remove_node (head_formula, A);
+   if (!A->prev || !A->prev->prev) {
+     log("SYSERR: Formula something went wrong!.");
+     return 0;
+   }
+   remove_node (head_formula, A->prev);
+   remove_node (head_formula, A->prev->prev);
+   return 1;
  }
  return 0; 
 }
@@ -268,7 +281,7 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
   } 
 
  if (!(C = B->next)) {
-   *rts_code = 7000 + B->command;
+   *rts_code = ERROR_7000 + B->command;
    return NULL;
  }
 
@@ -281,7 +294,7 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
                        return (B);
  }
 
- if (A) {               /* !20 or -10 + 10 there's no A*/
+ if (A) {               /* !20 or -10, +10 there's no A*/
    A->value *= A->sign;
    A->sign = 1;
  }
@@ -354,8 +367,9 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
 int perform_formula (struct formula **head_formula, int spell_vnum,
                      struct char_data *ch, int syserr, int *rts_code) 
 {
-  char *priority_check[5] = {"ijkl", "opx", "nm", "abcdefgh", "s"};
+  const char *priority_check[5] = {"ijkl", "opx", "nm", "abcdefgh", "s"};
   int exit = 0, brace, result, mode;
+  int inf_loop = 0;
   struct formula *Q, *ptr, *tmp;
 
   if (!*head_formula)
@@ -363,7 +377,7 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
 
   do {
     for (ptr = NULL, Q = *head_formula; Q; Q = Q->next)
-      if ((Q->command == CODE_ART_OBRACE) || (Q->command == CODE_ART_RAND)) 
+      if ((Q->command == CODE_ART_OBRACE) || (Q->command == CODE_ART_RAND) || (Q->command == CODE_ART_DICE)) 
         ptr = Q;
 
     if (ptr == NULL) {
@@ -376,6 +390,13 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
     tmp = ptr;
 
     do {
+      if (++inf_loop > 1000) {
+        *rts_code = ERROR_5003;
+        send_formula_error (ch, *rts_code, spell_vnum, syserr);
+        free_formula(head_formula);
+        mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: Infinite loop detected in formula");
+        return 0; 
+      }
       while (ptr && ptr->command != CODE_ART_CBRACE) {
         if (strchr (priority_check[mode], CHAR_CODE(ptr->command))) {
           ptr = formula_do_oper (head_formula, ptr, spell_vnum, ch, rts_code);
@@ -421,9 +442,13 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 {
  char buf[2048];
 
+ const char bad_start_code[] = "abcdefghjkloprstxzB";
+ const char bad_end_code[] = "abcdefghijklmnopqstuvwxAB";
+
  struct formula *head_formula = NULL;
  int i = 0, num = 0, otype_act  = 0, type_act = 0, self_vict = -1; 
  int cpt_obrace = 0, cpt_cbrace = 0, cpt_if   = 0, cpt_else  = 0;
+ int cpt_dice = 0, cpt_comma = 0;
 
  snprintf (buf, sizeof(buf), "%s ", cmd);
 
@@ -445,23 +470,54 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
      case ')' : cpt_cbrace++; break;
      case '?' : cpt_if++;     break;
      case ':' : cpt_else++;   break;
+     case ',' : cpt_comma++;  break;
      default  : buf[i] = toupper(buf[i]);
    }
 
- if ((cpt_obrace != cpt_cbrace) || 
-     (cpt_if     != cpt_else)) {
-   *rts_code = (cpt_obrace != cpt_cbrace) ? ERROR_5001 : ERROR_5002;
+ for (i=0; i<strlen(buf); i++) {
+   if (strncmp(&buf[i], "DICE(", 5) == 0)
+     cpt_dice++;
+ }
+
+ if (cpt_obrace != cpt_cbrace) {
+   *rts_code = ERROR_5001;
    send_formula_error (self, *rts_code, spell_vnum, syserr);
    return 0;
  }
 
+ if (cpt_if != cpt_else) {
+   *rts_code = ERROR_5002;
+   send_formula_error (self, *rts_code, spell_vnum, syserr);
+   return 0;
+ }
+
+ if (cpt_dice != cpt_comma) {
+   *rts_code = ERROR_5009;
+   send_formula_error (self, *rts_code, spell_vnum, syserr);
+   return 0;
+  }
+
+ // I'm adding () around the formula to avoid infinite loop.
+ // The system search for the last ) and perform everything between the last ) and his (
+ // In formula that doesn't end by ), the system fail to remove a pair of (), because there aren't any.
+ // That create an infinite loop. This is a little hack, maybe i'll find a better way to fix that eventually.
+ // I also added code to detect infinite loop as a second safety, and return ERROR and value 0;
  add_to_formula (&head_formula, CODE_ART_OBRACE, 0); // little hack. 
 
  for (i=0; i<strlen(buf); i++) {
    if (type_act)
      otype_act = type_act;
-   if (!(type_act = get_formula_typeact (self, buf, &i, spell_vnum, syserr)) && (i<strlen(buf)-1)) 
+   if (!(type_act = get_formula_typeact ( buf, &i )) && (i<strlen(buf)-1)) 
      continue;              
+
+   if (!otype_act)  {
+     if (strchr(bad_start_code, CHAR_CODE(type_act))) {
+       *rts_code = ERROR_6000 + type_act;
+       send_formula_error (self, *rts_code, spell_vnum, syserr);
+       return 0;
+     }
+   }
+
    if (type_act == -1) {
      *rts_code = ERROR_5000;
      send_formula_error (self, *rts_code, spell_vnum, syserr);
@@ -540,6 +596,13 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 #ifdef DEBUG_FORMULA
    show_formula (self, head_formula);
 #endif
+
+ if (strchr(bad_end_code, CHAR_CODE(otype_act))) {
+   *rts_code = ERROR_7000 + otype_act;
+   send_formula_error (self, *rts_code, spell_vnum, syserr);
+   return 0;
+ }
+
  add_to_formula (&head_formula, CODE_ART_CBRACE, 0); // little hack.
 
  return (perform_formula(&head_formula, spell_vnum, self, syserr, rts_code));

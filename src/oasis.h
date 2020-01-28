@@ -113,7 +113,7 @@ struct oasis_olc_data {
 };
 
 /* Exported globals. */
-extern const char *nrm, *grn, *cyn, *yel, *red;
+extern const char *nrm, *grn, *cyn, *yel, *YEL, *bln, *red;
 
 /* Descriptor access macros. */
 #define OLC(d)         ((d)->olc)

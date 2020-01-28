@@ -35,6 +35,8 @@
 #include "ban.h"
 #include "screen.h"
 
+extern char *get_spell_name(int serial);
+
 /* local utility functions with file scope */
 static int perform_set(struct char_data *ch, struct char_data *vict, int mode, char *val_arg);
 static void perform_immort_invis(struct char_data *ch, int level);
@@ -914,7 +916,7 @@ static void do_stat_character(struct char_data *ch, struct char_data *k)
   /* Routine to show what spells a char is affected by */
   if (k->affected) {
     for (aff = k->affected; aff; aff = aff->next) {
-      send_to_char(ch, "SPL: (%3dhr) %s%-21s%s ", aff->duration + 1, CCCYN(ch, C_NRM), skill_name(aff->spell), CCNRM(ch, C_NRM));
+      send_to_char(ch, "SPL: (%3dhr) %s%-21s%s ", aff->duration + 1, CCCYN(ch, C_NRM), get_spell_name(aff->spell), CCNRM(ch, C_NRM));
 
       if (aff->modifier)
 	send_to_char(ch, "%+d to %s", aff->modifier, apply_types[(int) aff->location]);

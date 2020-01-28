@@ -52,7 +52,9 @@
 #define CODE_VAR_SAVPETRI  46
 #define CODE_VAR_SAVBREATH 47
 #define CODE_VAR_SAVSPELL  48
-#define CODE_VAR_LAST      48  /* last variable  */ 
+#define CODE_VAR_LAST      48    /* last variable  */ 
+#define CODE_ART_DICE      49    /* this was added later */
+#define CODE_COMMA         50
 
 #define CODE_DIGIT         99    /* digit 0 to 9 */
 #define ERROR_5000         5000  /* Unknow variable or operator */
@@ -64,7 +66,15 @@
 #define ERROR_5006         5006  /* division by 0 */
 #define ERROR_5007         5007  /* +++ Unsupported */
 #define ERROR_5008         5008  /* --- Unsupported */
-#define CHAR_CODE(x)       ((x) == CODE_DIGIT     ? 'y' : \
+#define ERROR_5009         5009  /* formula don't have as much 'dice' as ',' */ 
+#define ERROR_5010         5010  /* , expected but not found */
+#define LAST_5K_ERROR      5010
+#define ERROR_6000         6000  /* a formula can't start by */
+#define ERROR_7000         7000  /* a formula can't end by */
+
+#define CHAR_CODE(x)       ((x) == CODE_DIGIT ? 'y' : \
+                            (x) == CODE_COMMA ? 'B' : \
+                            (x) == CODE_ART_DICE ? 'A' : \
                             (x) >= CODE_VAR_FIRST ? 'z' : \
                             (x) -  CODE_LOG_AND   + 'a') 
 
@@ -119,6 +129,8 @@ const char *list_codes[] = {
    "SAVPETRI",      /* 46 (z) */ 
    "SAVBREATH",     /* 47 (z) */
    "SAVSPELL",      /* 48 (z) */
+   "DICE(",         /* 49 (A) */
+   ",",             /* 50 (B) */
    "\n"
 };
 

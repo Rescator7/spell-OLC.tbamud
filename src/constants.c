@@ -985,7 +985,7 @@ const char *mag_flags[] =
 "GROUPS",
 "MASSES",
 "AREAS",
-"MAG_SUMMONS",
+"SUMMONS",
 "CREATIONS",
 "MANUAL",
 "ROOMS",

@@ -30,7 +30,7 @@
 #include "spedit.h"
 
 /* Global variables defined here, used elsewhere */
-const char *nrm, *grn, *cyn, *yel, *red;
+const char *nrm, *grn, *cyn, *yel, *YEL, *bln, *red;
 
 /* Internal Function prototypes  */
 static void free_config(struct config_data *data);
@@ -54,6 +54,8 @@ void get_char_colors(struct char_data *ch)
   grn = CCGRN(ch, C_NRM);
   cyn = CCCYN(ch, C_NRM);
   yel = CCYEL(ch, C_NRM);
+  bln = CCFBLU(ch, C_NRM);
+  YEL = CBYEL(ch, C_NRM);
   red = CCRED(ch, C_NRM);
 }
 
