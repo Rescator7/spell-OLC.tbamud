@@ -119,8 +119,7 @@ struct alias_data {
 #define SCMD_OASIS_QLIST       6
 
 /* do_cast */
-#define SCMD_SPELL	1
-#define SCMD_SKILL	2
+#define SCMD_SPELL	0
 
 /* Necessary for CMD_IS macro.  Borland needs the structure defined first
  * so it has been moved down here. */

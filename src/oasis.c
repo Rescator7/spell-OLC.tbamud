@@ -196,11 +196,11 @@ void cleanup_olc(struct descriptor_data *d, byte cleanup_type)
      OLC_PREFS(d) = NULL;
    }
 
-   if(OLC_SPELL(d) && !OLC_SPELL(d)->saved) {
-     spedit_free_spell(OLC_SPELL(d));    // free the memory
+   if(OLC_SPELL(d)) {
+     spedit_free_spell(OLC_SPELL(d));    
+     OLC_SPELL(d) = NULL;               
    }
-   OLC_SPELL(d) = NULL;                  // remove the pointer
-   OLC_SEARCH(d) = NULL;
+     OLC_SEARCH(d) = NULL;
 
    /* OLC_SCRIPT is always set as trig_proto of OLC_OBJ/MOB/ROOM. Therefore it
     * should not be free'd here. */

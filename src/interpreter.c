@@ -38,7 +38,6 @@
 #include "ibt.h"
 #include "mud_event.h"
 
-ACMD(do_listspells);
 ACMD(do_formula);
 
 /* local (file scope) functions */
@@ -104,11 +103,11 @@ cpp_extern const struct command_info cmd_info[] = {
   { "autosac"  , "autosac" , POS_DEAD    , do_gen_tog , 0, SCMD_AUTOSAC },
   { "autosplit", "autospl" , POS_DEAD    , do_gen_tog , 0, SCMD_AUTOSPLIT },
 
-  { "backstab" , "ba"      , POS_STANDING, do_backstab , 1, 0 },
+  { "backstab" , "ba"      , POS_STANDING, do_cast , 1, SKILL_BACKSTAB },
   { "ban"      , "ban"     , POS_DEAD    , do_ban      , LVL_GRGOD, 0 },
-  { "bandage"  , "band"    , POS_RESTING , do_bandage  , 1, 0 },
+  { "bandage"  , "band"    , POS_RESTING , do_cast  , 1, SKILL_BANDAGE },
   { "balance"  , "bal"     , POS_STANDING, do_not_here , 1, 0 },
-  { "bash"     , "bas"     , POS_FIGHTING, do_bash     , 1, 0 },
+  { "bash"     , "bas"     , POS_FIGHTING, do_cast     , 1, SKILL_BASH },
   { "brief"    , "br"      , POS_DEAD    , do_gen_tog  , 0, SCMD_BRIEF },
   { "buildwalk", "buildwalk", POS_STANDING, do_gen_tog , LVL_BUILDER, SCMD_BUILDWALK },
   { "buy"      , "bu"      , POS_STANDING, do_not_here , 0, 0 },
@@ -174,7 +173,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "happyhour", "ha"      , POS_DEAD    , do_happyhour, 0, 0 },
   { "hedit"    , "hedit"   , POS_DEAD    , do_oasis_hedit, LVL_GOD , 0 },
   { "helpcheck", "helpch"  , POS_DEAD    , do_helpcheck, LVL_GOD, 0 },
-  { "hide"     , "hi"      , POS_RESTING , do_hide     , 1, 0 },
+  { "hide"     , "hi"      , POS_RESTING , do_cast     , 1, SKILL_HIDE },
   { "hindex"   , "hind"    , POS_DEAD    , do_hindex   , 0, 0 },
   { "handbook" , "handb"   , POS_DEAD    , do_gen_ps   , LVL_IMMORT, SCMD_HANDBOOK },
   { "hcontrol" , "hcontrol", POS_DEAD    , do_hcontrol , LVL_GRGOD, 0 },
@@ -192,12 +191,11 @@ cpp_extern const struct command_info cmd_info[] = {
   { "immlist"  , "imm"     , POS_DEAD    , do_gen_ps   , 0, SCMD_IMMLIST },
   { "info"     , "info"    , POS_SLEEPING, do_gen_ps   , 0, SCMD_INFO },
   { "invis"    , "invi"    , POS_DEAD    , do_invis    , LVL_IMMORT, 0 },
-  { "listspells", "lists"  , POS_DEAD    , do_listspells, LVL_IMMORT, 0 },
 
   { "junk"     , "j"       , POS_RESTING , do_drop     , 0, SCMD_JUNK },
 
   { "kill"     , "k"       , POS_FIGHTING, do_kill     , 0, 0 },
-  { "kick"     , "ki"      , POS_FIGHTING, do_kick     , 1, 0 },
+  { "kick"     , "ki"      , POS_FIGHTING, do_cast     , 1, SKILL_KICK },
 
   { "look"     , "l"       , POS_RESTING , do_look     , 0, SCMD_LOOK },
   { "last"     , "last"    , POS_DEAD    , do_last     , LVL_GOD, 0 },
@@ -271,7 +269,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "rent"     , "rent"    , POS_STANDING, do_not_here , 1, 0 },
   { "report"   , "repo"    , POS_RESTING , do_report   , 0, 0 },
   { "reroll"   , "rero"    , POS_DEAD    , do_wizutil  , LVL_GRGOD, SCMD_REROLL },
-  { "rescue"   , "resc"    , POS_FIGHTING, do_rescue   , 1, 0 },
+  { "rescue"   , "resc"    , POS_FIGHTING, do_cast   , 1, SKILL_RESCUE },
   { "restore"  , "resto"   , POS_DEAD    , do_restore  , LVL_GOD, 0 },
   { "return"   , "retu"    , POS_DEAD    , do_return   , 0, 0 },
   { "redit"    , "redit"   , POS_DEAD    , do_oasis_redit, LVL_BUILDER, 0 },
@@ -300,7 +298,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "skillset" , "skillset", POS_SLEEPING, do_skillset , LVL_GRGOD, 0 },
   { "sleep"    , "sl"      , POS_SLEEPING, do_sleep    , 0, 0 },
   { "slist"    , "slist"   , POS_SLEEPING, do_oasis_list, LVL_BUILDER, SCMD_OASIS_SLIST },
-  { "sneak"    , "sneak"   , POS_STANDING, do_sneak    , 1, 0 },
+  { "sneak"    , "sneak"   , POS_STANDING, do_cast    , 1, SKILL_SNEAK },
   { "snoop"    , "snoop"   , POS_DEAD    , do_snoop    , LVL_GOD, 0 },
   { "spedit"   , "spe"     , POS_DEAD    , do_spedit   , LVL_BUILDER, 0 },
   { "splist"   , "spliist" , POS_DEAD    , do_splist   , LVL_BUILDER, 0 },
@@ -308,7 +306,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "split"    , "split"   , POS_SITTING , do_split    , 1, 0 },
   { "stand"    , "st"      , POS_RESTING , do_stand    , 0, 0 },
   { "stat"     , "stat"    , POS_DEAD    , do_stat     , LVL_IMMORT, 0 },
-  { "steal"    , "ste"     , POS_STANDING, do_steal    , 1, 0 },
+  { "steal"    , "ste"     , POS_STANDING, do_cast    , 1, SKILL_STEAL },
   { "switch"   , "switch"  , POS_DEAD    , do_switch   , LVL_GOD, 0 },
 
   { "tell"     , "t"       , POS_DEAD    , do_tell     , 0, 0 },
@@ -320,7 +318,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "title"    , "title"   , POS_DEAD    , do_title    , 0, 0 },
   { "time"     , "time"    , POS_DEAD    , do_time     , 0, 0 },
   { "toggle"   , "toggle"  , POS_DEAD    , do_toggle   , 0, 0 },
-  { "track"    , "track"   , POS_STANDING, do_track    , 0, 0 },
+  { "track"    , "track"   , POS_STANDING, do_cast    , 0, SKILL_TRACK },
   { "transfer" , "transfer", POS_SLEEPING, do_trans    , LVL_GOD, 0 },
   { "trigedit" , "trigedit", POS_DEAD    , do_oasis_trigedit, LVL_BUILDER, 0 },
   { "typo"     , "typo"    , POS_DEAD    , do_ibt      , 0, SCMD_TYPO },
@@ -350,7 +348,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "whois"    , "whoi"    , POS_DEAD    , do_whois    , 0, 0 },
   { "whoami"   , "whoami"  , POS_DEAD    , do_gen_ps   , 0, SCMD_WHOAMI },
   { "where"    , "where"   , POS_RESTING , do_where    , 1, 0 },
-  { "whirlwind", "whirl"   , POS_FIGHTING, do_whirlwind, 0, 0 },
+  { "whirlwind", "whirl"   , POS_FIGHTING, do_cast, 0, SKILL_WHIRLWIND },
   { "whisper"  , "whisper" , POS_RESTING , do_spec_comm, 0, SCMD_WHISPER },
   { "wield"    , "wie"     , POS_RESTING , do_wield    , 0, 0 },
   { "withdraw" , "withdraw", POS_STANDING, do_not_here , 1, 0 },

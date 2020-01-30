@@ -24,7 +24,7 @@ int is_abbrev (const char *arg1, const char *arg2);
 int formula_interpreter (struct char_data *self, struct char_data *vict, int spell_vnum,
                          int syserr, char *cmd, int *rts_code);
 struct str_spells *list_spells = NULL;
-int last_serial = 0;
+int last_vnum = 0;
 
 char *UNDEF_SPELL = "Undefined";
 
@@ -40,13 +40,22 @@ void strxupr (char *str) {
         str[i] = toupper(str[i]); 
 }
 
-char *IS_SPELL_OLCING (int serial) 
+int IS_SPELL_CLASS(struct str_spells *spell, int class) {
+  int i;
+
+  for (i=0; i<NUM_CLASSES; i++)
+    if (spell->assign[i].class_num == class)
+      return 1;
+  return 0;
+}
+
+char *IS_SPELL_OLCING (int vnum) 
 {
  struct descriptor_data *q;
 
  for (q = descriptor_list; q; q = q->next)
    if ((q->connected == CON_SPEDIT) && 
-       OLC_NUM(q) == serial) 
+       OLC_NUM(q) == vnum) 
      return (GET_NAME(q->character));
  return NULL;
 }
@@ -81,31 +90,51 @@ int is_apply_set(struct str_spells *spell)
  return 0;
 }
 
-char *get_spell_name(int serial)
+char *get_spell_name(int vnum)
 {
  struct str_spells *ptr;
 
  for (ptr = list_spells; ptr; ptr = ptr->next)
-   if (ptr->serial == serial)
+   if (ptr->vnum == vnum)
      return ptr->name;
  return UNDEF_SPELL;
 }
 
-int find_spell_by_serial (int serial)
+int find_spell_by_vnum (int vnum)
 {
   struct str_spells *ptr;
 
   for (ptr = list_spells; ptr; ptr = ptr->next)
-    if (ptr->serial == serial) 
-      return serial;
+    if (ptr->vnum == vnum) 
+      return vnum;
   return 0;
+}
+
+struct str_spells *get_spell_by_vnum(int vnum)
+{
+  struct str_spells *ptr;
+
+  for (ptr = list_spells; ptr; ptr = ptr->next)
+    if (ptr->vnum == vnum) 
+      return ptr;
+  return NULL;
+}
+
+struct str_spells *get_spell_by_name(char *name)
+{
+  struct str_spells *ptr;
+
+  for (ptr = list_spells; ptr; ptr = ptr->next)
+    if (is_abbrev(ptr->name, name)) 
+      return ptr;
+  return NULL;
 }
 
 int find_spell_by_name (struct descriptor_data *d, char *name) 
 {
   struct str_spells *ptr;
 
-  int serial = 0;
+  int vnum = 0;
 
   if (OLC_SEARCH(d))
     ptr = OLC_SEARCH(d);
@@ -114,17 +143,17 @@ int find_spell_by_name (struct descriptor_data *d, char *name)
 
   while (ptr) {
     if (strstr(ptr->name, name)) {
-      if (serial == 0)
-        serial = ptr->serial;
+      if (vnum == 0)
+        vnum = ptr->vnum;
       else {
         OLC_SEARCH(d) = ptr; 
-        return serial;
+        return vnum;
       }
     }
     ptr = ptr->next;
   }
   OLC_SEARCH(d) = NULL;
-  return serial;
+  return vnum;
 }
 
 char *spedit_list_targ_flags (int flags) {
@@ -331,8 +360,8 @@ void spedit_main_menu (struct descriptor_data *d) {
   send_to_char (d->character, "[H[J");
 #endif         
 
-  sprintf (buf, "%s-- Serial number     : [%s%5d%s]    %sT%s)ype : [%s%-6s%s]    "
-                "%sSpec_Prog : %s%s\r\n"
+  sprintf (buf, "%s-- %s Number      : [%s%5d%s] %s%s%s\r\n"
+                "%sT%s) Type              : [%s%-5s%s]\r\n"
                 "%sS%s) %sStatus            : %s%s\r\n"  
                 "%s1%s) Name              : %s%s\r\n"
                 "%s2%s) Min position      : %s%s\r\n"
@@ -347,8 +376,8 @@ void spedit_main_menu (struct descriptor_data *d) {
                 "%sB%s) %sMenu -> Assignement\r\n"
                 "%sQ%s) Quit\r\n\r\n"
                 "%sEnter choice : ",
-                 nrm, cyn, OLC_NUM(d), nrm, prog ? red : grn, nrm, cyn, (Q->type == SPELL) ? "SPELL" : "SKILL", nrm,
-                 nrm, yel, Q->function ? "Yes" : "No", 
+                 nrm, (Q->type == SPELL) ? "Spell" : "Skill", cyn, OLC_NUM(d), nrm, yel, Q->function ? "Special" : "", nrm,
+                 prog ? red : grn, nrm, cyn, (Q->type == SPELL) ? "SPELL" : "SKILL", nrm,
                  grn, nrm, (Q->status == available) ? nrm : YEL, yel, (Q->status == available) ? "Available" : "Unavailable",
                  prog ? red : grn, nrm, yel, Q->name ? Q->name : "Undefined", 
                  prog ? red : grn, nrm, cyn, ((Q->min_pos >= 0) && (Q->min_pos < NUM_CHAR_POSITION)) ? 
@@ -370,17 +399,15 @@ void spedit_main_menu (struct descriptor_data *d) {
   OLC_MODE (d) = SPEDIT_MAIN_MENU;
 }
 
-void spedit_free_spell (struct str_spells *spell) {
+void spedit_empty_spell (struct str_spells *spell) {
   int i;
-
-  if (!spell)
-    return;
 
   if (spell->name)          free (spell->name);
   if (spell->damages)       free (spell->damages);
   if (spell->effectiveness) free (spell->effectiveness);
   if (spell->delay)         free (spell->delay);
   if (spell->script)        free (spell->script);
+  if (spell->wear_off_msg)  free (spell->wear_off_msg);
   for (i=0; i<NUM_CLASSES; i++) {
     if (spell->protfrom[i].duration) 
       free (spell->protfrom[i].duration);
@@ -395,6 +422,14 @@ void spedit_free_spell (struct str_spells *spell) {
     if (spell->assign[i].num_mana)
       free (spell->assign[i].num_mana);
   }
+}
+
+void spedit_free_spell (struct str_spells *spell) {
+  if (!spell)
+    return;
+
+  spedit_empty_spell(spell);
+
   free (spell);
 }
 
@@ -413,12 +448,10 @@ void spedit_save_internally (struct str_spells *spell)
  struct str_spells *i, *p = NULL;
 
  for (i = list_spells; i; p = i, i = i->next)
-   if (i->serial >= spell->serial)
+   if (i->vnum >= spell->vnum)
      break;
 
- spell->saved = TRUE;
-
- if (i && (i->serial == spell->serial)) {
+ if (i && (i->vnum == spell->vnum)) {
    i->status = spell->status;
    return;
  }
@@ -431,11 +464,47 @@ void spedit_save_internally (struct str_spells *spell)
   spell->next = i;
 }
 
+void spedit_copyover_spell (struct str_spells *from, struct str_spells *to)
+{
+  int i;
+
+  spedit_empty_spell(to);
+
+  to->status = from->status;
+  to->type = from->type;
+  to->name = from->name ? strdup(from->name) : NULL;
+  to->targ_flags = from->targ_flags;
+  to->mag_flags = from->mag_flags;
+  to->min_pos = from->min_pos;
+  to->max_dam = from->max_dam;
+  to->effectiveness = from->effectiveness ? strdup(from->effectiveness) : NULL; 
+  to->damages = from->damages ? strdup(from->damages) : NULL;
+  to->delay = from->delay ? strdup(from->delay) : NULL;
+  to->script = from->script ? strdup(from->script) : NULL;
+  to->wear_off_msg = from->wear_off_msg ? strdup(from->wear_off_msg) : NULL;
+  
+  for (i=0; i<6; i++) {
+    to->protfrom[i].prot_num = from->protfrom[i].prot_num;
+    to->protfrom[i].duration = from->protfrom[i].duration ? strdup(from->protfrom[i].duration) : NULL;
+    to->protfrom[i].resist = from->protfrom[i].resist ? strdup(from->protfrom[i].resist) : NULL;
+    to->applies[i].appl_num = from->applies[i].appl_num;
+    to->applies[i].modifier = from->applies[i].modifier ? strdup(from->applies[i].modifier) : NULL;
+    to->applies[i].duration = from->applies[i].duration ? strdup(from->applies[i].duration) : NULL;
+  }
+
+  for (i=0; i<NUM_CLASSES; i++) {
+    to->assign[i].class_num = from->assign[i].class_num;
+    to->assign[i].level = from->assign[i].level;
+    to->assign[i].num_prac = from->assign[i].num_prac ? strdup(from->assign[i].num_prac) : NULL;
+    to->assign[i].num_mana = from->assign[i].num_mana ? strdup(from->assign[i].num_mana) : NULL;
+  }
+  to->function = from->function;
+}
+
 void spedit_init_new_spell (struct str_spells *spell)
 {
  int i;
 
- spell->saved    = FALSE;
  spell->next     = NULL;
  spell->status   = unavailable;
  spell->type     = 'P';
@@ -448,7 +517,7 @@ void spedit_init_new_spell (struct str_spells *spell)
  spell->damages  = NULL;
  spell->delay    = NULL;
  spell->script   = NULL;
- spell->wear_off = NULL;
+ spell->wear_off_msg = NULL;
  for (i=0; i<6; i++) {
    spell->protfrom[i].prot_num = -1;
    spell->protfrom[i].duration = NULL;
@@ -467,31 +536,43 @@ void spedit_init_new_spell (struct str_spells *spell)
  spell->function               = NULL;
 }
 
-void spedit_create_spell (struct descriptor_data *d)
+int spedit_create_spell (struct descriptor_data *d)
 {
  struct str_spells *q = NULL;
 
- int serial = 0;
+ int vnum = 0;
 
+ // if OLC_NUM(d) != 0 we search that vnum spell, 
+ // otherwise we search the end of the list to create a new spell there. at last VNUM + 1.
  for (q = list_spells; q; q = q->next) {
-   serial = q->serial;
+   vnum = q->vnum;
 
-   if (q->serial && (q->serial == OLC_NUM(d)))
+   if (q->vnum && (q->vnum == OLC_NUM(d)))
      break;
  }
 
+ // if OLC_NUM(d) == 0 that means we want to create a new spell,
+ // if so we start from last VNUM + 1 and we search for the first
+ // free VNUM that isn't OLCING by someone else.
  if (!OLC_NUM(d))
-   while (IS_SPELL_OLCING(++serial));
+   while (IS_SPELL_OLCING(++vnum));
 
-   OLC_NUM(d) = serial;
+ if (vnum > MAX_SKILLS) {
+   mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: Spedit: Skills and spells limits reached.");
+   return 0;
+ }
+
+ OLC_NUM(d) = vnum;
+
+ CREATE (OLC_SPELL(d), struct str_spells, 1);
+ OLC_SPELL(d)->vnum = OLC_NUM(d);
 
  if (q) 
-   OLC_SPELL(d) = q;
- else {
-   CREATE (OLC_SPELL(d), struct str_spells, 1);
-   OLC_SPELL(d)->serial = OLC_NUM(d);
-   spedit_init_new_spell (OLC_SPELL(d));
- }
+   spedit_copyover_spell(q, OLC_SPELL(d));
+ else
+   spedit_init_new_spell(OLC_SPELL(d));
+
+ return 1;
 }
 
 void boot_spells (void)
@@ -522,8 +603,12 @@ void boot_spells (void)
                  save = 1;
                CREATE (Q, struct str_spells, 1);
                spedit_init_new_spell (Q);
-               ret = fscanf (fp, "%c %d %d %d %d %d %d\n", &Q->type, &Q->serial, &Q->status,
+               ret = fscanf (fp, "%c %d %d %d %d %d %d\n", &Q->type, &Q->vnum, &Q->status,
                              &Q->targ_flags, &Q->mag_flags, &Q->min_pos, &Q->max_dam);
+               if (Q->vnum > MAX_SKILLS) {
+                 mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: spell vnum > MAX_SKILLS");
+                 abort();
+               }
                break;
       case 2 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0'; 
@@ -628,7 +713,7 @@ void spedit_save_to_disk (void)
  }
  for (r = list_spells; r; r = r->next) {
    sprintf (buf, "01 %c %d %d %d %d %d %d\n",
-                  r->type, r->serial, r->status, r->targ_flags, r->mag_flags, r->min_pos, r->max_dam);
+                  r->type, r->vnum, r->status, r->targ_flags, r->mag_flags, r->min_pos, r->max_dam);
    if (r->name)
      sprintf (buf, "%s02 %s\n", buf, r->name);
 
@@ -686,8 +771,13 @@ int spedit_setup2 (struct descriptor_data *d)
  act("$n starts using OLC.", TRUE, d->character, 0, 0, TO_ROOM);
  SET_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
 
- spedit_create_spell (d);
- spedit_main_menu (d);
+ if (spedit_create_spell (d))
+   spedit_main_menu (d);
+ else {
+   send_to_char (d->character, "Failed the limits of spells and skills has been reached!\r\n");
+   cleanup_olc (d, CLEANUP_ALL);
+   return 0;
+ }
 
  return 1;
 }
@@ -697,28 +787,28 @@ int spedit_setup (struct descriptor_data *d)
  char buf[2048];
 
  char *str;
- int serial;
+ int vnum;
  
  if (OLC_STORAGE(d)) {
    if (is_number(OLC_STORAGE(d))) 
-     serial = find_spell_by_serial(atoi(OLC_STORAGE(d))); 
+     vnum = find_spell_by_vnum(atoi(OLC_STORAGE(d))); 
    else
-     serial = find_spell_by_name(d, OLC_STORAGE(d));
+     vnum = find_spell_by_name(d, OLC_STORAGE(d));
 
-   if (!serial) {
+   if (!vnum) {
      send_to_char (d->character, "that spell could not be found!\r\n");
      cleanup_olc (d, CLEANUP_ALL);
      return 0;
    } else {
-       if ((str = IS_SPELL_OLCING (serial))) {
-         sprintf (buf, "This spell '%s' (serial: %d) is already edited by %s.\r\n", get_spell_name(serial), serial, str);
+       if ((str = IS_SPELL_OLCING (vnum))) {
+         sprintf (buf, "This spell '%s' (vnum: %d) is already edited by %s.\r\n", get_spell_name(vnum), vnum, str);
          send_to_char (d->character, "%s", buf);  
          cleanup_olc (d, CLEANUP_ALL);
          return 0;
        }
 
-       OLC_NUM(d) = serial;
-       sprintf (buf, "Do you want to edit '%s' (serial: %d)? (y/n%s): ", get_spell_name(serial), serial, 
+       OLC_NUM(d) = vnum;
+       sprintf (buf, "Do you want to edit '%s' (vnum: %d)? (y/n%s): ", get_spell_name(vnum), vnum, 
                      OLC_SEARCH(d) ? ", q" : "");
        send_to_char (d->character, "%s", buf);  
        OLC_MODE(d) = SPEDIT_CONFIRM_EDIT;
@@ -735,29 +825,32 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
   char buf[2048];
 
   int x = 0, value, rts_code = 0;
+  struct str_spells *to;
 
   switch (OLC_MODE(d)) {
     case SPEDIT_CONFIRM_SAVESTRING:
         switch (*arg) {
           case 'y' :
-          case 'Y' : if (!OLC_SPELL(d)->saved)
+          case 'Y' : to = get_spell_by_vnum(OLC_NUM(d));
+
+                     if (!to) {
                        spedit_save_internally(OLC_SPELL(d));
-                     spedit_save_to_disk();
+                       OLC_SPELL(d) = NULL;  // now, it's not a copy, it's saved in memory. 
+                                             // the pointer must be NULLed, to avoid cleanup_olc to free the structure.
+                     }
+                     else 
+                       spedit_copyover_spell(OLC_SPELL(d), to); 
+
                      sprintf (buf, "OLC: %s edits spells %d.", GET_NAME(d->character), OLC_NUM(d));
                      mudlog (CMP, MAX(LVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE, "%s", buf);
-                     OLC_SPELL(d) = NULL;
-                     cleanup_olc (d, CLEANUP_ALL);
+
                      send_to_char (d->character, "Spell saved to disk.\r\n");
                      spedit_save_to_disk();
+
+                     cleanup_olc (d, CLEANUP_ALL);
                      break;
           case 'n' :
-          case 'N' : if (!OLC_SPELL(d)->saved) {
-                       spedit_free_spell (OLC_SPELL(d));
-                       OLC_SPELL(d) = NULL;
-                     }
-                     else
-                       send_to_char (d->character, "Spell has been updated.\r\n");
-                     cleanup_olc (d, CLEANUP_ALL);
+          case 'N' : cleanup_olc (d, CLEANUP_ALL); 
                      break;
           default  : send_to_char (d->character, "Invalid choice!\r\nDo you want to save this spell to disk? : ");
                      break;
@@ -808,12 +901,12 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                                 if (!atoi(arg)) 
                                   spedit_protection_menu (d);
                                 else {
-                                  int serial = atoi(arg);
-                                  if (!find_spell_by_serial(serial)) {
+                                  int vnum = atoi(arg);
+                                  if (!find_spell_by_vnum(vnum)) {
                                     send_to_char (d->character, "Invalid: spell not found!\r\n"
                                                                 "\r\nSpell VNUM (0 to quit, 'r' to remove) : ");
                                   } else {
-                                      OLC_SPELL(d)->protfrom[OLC_VAL(d)].prot_num = serial;
+                                      OLC_SPELL(d)->protfrom[OLC_VAL(d)].prot_num = vnum;
                                       send_to_char (d->character, "Duration : ");
                                       OLC_MODE(d) = SPEDIT_GET_PROTDUR;
                                     }
@@ -1157,22 +1250,78 @@ ACMD(do_spedit) {
 
 ACMD(do_splist) {
 {
- char buf[MAX_STRING_LENGTH];
+ //char buf[MAX_STRING_LENGTH];
+ char buf[65535];
  int cpt = 0;
+ int search_by_class = CLASS_UNDEFINED;
+ int search_by_part_name = 0;
+ int search_disabled = 0;
  size_t len = 0, tmp_len = 0;
 
  struct str_spells *ptr;
  
+ skip_spaces(&argument);
+
+ if (!*argument) {
+   send_to_char(ch, "splist all - list all spells\r\n"
+                    "splist mu  - list all spells in class magical user\r\n" 
+                    "splist cl  - list all spells in class cleric\r\n" 
+                    "splist th  - list all spells in class thief\r\n" 
+                    "splist wa  - list all spells in class warrior\r\n" 
+                    "splist off - list all spells disabled\r\n"
+                    "splist <word> - list all spells containing the <word>\r\n");
+   return;
+ }
+ 
+ if(!strcmp(argument, "mu")) 
+   search_by_class = CLASS_MAGIC_USER;
+ else
+ if(!strcmp(argument, "cl"))
+   search_by_class = CLASS_CLERIC;
+ else
+ if(!strcmp(argument, "th"))
+   search_by_class = CLASS_THIEF;
+ else
+ if(!strcmp(argument, "wa"))
+   search_by_class = CLASS_WARRIOR;
+ else
+ if(!strcmp(argument, "off")) 
+   search_disabled = 1;
+ else
+ if(strcmp(argument, "all"))
+   search_by_part_name = 1;
+
+
  len = snprintf(buf, sizeof(buf), 
- "Index Serial  Name                 Type     Spec_Prog    Available\r\n"
- "----- ------  ----                 ----     ---------    ---------\r\n");
+ "Index VNum    Name                 Type     Spec_Prog    Available   Classe(s)\r\n"
+ "----- ------- ----                 ----     ---------    ---------   -----------\r\n");
  
  for (ptr = list_spells; ptr; ptr = ptr->next) {
-   tmp_len = snprintf(buf+len, sizeof(buf)-len, "%s%4d%s) [%s%5d%s]%s %-20s%s %-5s    %s%-3s          %s%-3s\r\n",
-             QGRN, ++cpt, QNRM, QGRN, ptr->serial, QNRM, 
+   char classes[80] = "";
+   int mu, cl, th, wa;
+
+   if ((mu = IS_SPELL_CLASS(ptr, CLASS_MAGIC_USER))) strcat(classes, "Mu ");
+   if ((search_by_class == CLASS_MAGIC_USER) && !mu) continue;
+
+   if ((cl = IS_SPELL_CLASS(ptr, CLASS_CLERIC))) strcat(classes, "Cl ");
+   if ((search_by_class == CLASS_CLERIC) && !cl) continue;
+
+   if ((th = IS_SPELL_CLASS(ptr, CLASS_THIEF))) strcat(classes, "Th ");
+   if ((search_by_class == CLASS_THIEF) && !th) continue;
+
+   if ((wa = IS_SPELL_CLASS(ptr, CLASS_WARRIOR))) strcat(classes, "Wa");
+   if ((search_by_class == CLASS_WARRIOR) && !wa) continue;
+
+   if (search_disabled && (ptr->status == available)) continue;
+
+   if (search_by_part_name && !strstr(ptr->name, argument)) continue;
+
+   tmp_len = snprintf(buf+len, sizeof(buf)-len, "%s%4d%s) [%s%5d%s]%s %-20s%s %-5s    %s%-3s          %s%-3s         %s%s%s\r\n",
+             QGRN, ++cpt, QNRM, QGRN, ptr->vnum, QNRM, 
              QCYN, ptr->name, QYEL, ptr->type == SPELL ? "SPELL" : "SKILL", 
              QNRM, ptr->function ? "Yes" : "No", 
-             ptr->status == available ? QGRN : QRED, ptr->status == available ? "Yes" : "No"); 
+             ptr->status == available ? QGRN : QRED, ptr->status == available ? "Yes" : "No", 
+             QCYN, classes, QNRM); 
    len += tmp_len;
    if (len > sizeof(buf))
      break;

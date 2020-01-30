@@ -694,9 +694,6 @@ int get_filename(char *filename, size_t fbufsize, int mode, const char *orig_nam
     prefix = LIB_PLRFILES;
     suffix = SUF_PLR;
     break;
-  case PLR_SPELLS_FILE:
-    prefix = LIB_PLRSPELLSFILES;
-    suffix = SUF_PLRSPELLS;
   default:
     return (0);
   }

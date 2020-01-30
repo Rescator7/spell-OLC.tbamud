@@ -35,7 +35,6 @@
 #define LIB_PLRVARS	":plrvars:"
 #define LIB_PLRFILES	":plrfiles:"
 #define LIB_HOUSE	":house:"
-#define LIB_PLRSPELLSFILES ":plrspells:"
 #define SLASH		":"
 #elif defined(CIRCLE_AMIGA) || defined(CIRCLE_UNIX) || defined(CIRCLE_WINDOWS) || defined(CIRCLE_ACORN) || defined(CIRCLE_VMS)
 #define LIB_WORLD	"world/"
@@ -47,8 +46,7 @@
 #define LIB_PLROBJS	"plrobjs/"
 #define LIB_PLRVARS	"plrvars/"
 #define LIB_HOUSE	"house/"
-#define LIB_PLRFILES    "plrfiles/"
-#define LIB_PLRSPELLSFILES "plrspells/"
+#define LIB_PLRFILES	"plrfiles/"
 #define SLASH		"/"
 #else
 #error "Unknown path components."

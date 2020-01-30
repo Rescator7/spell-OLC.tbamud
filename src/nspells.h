@@ -10,7 +10,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict, int sep
                          int syserr, char *cmd, int *rts_code);
 int GET_ALIGN_TYPE (struct char_data *ch);
 struct str_plrspells {
-  int    serial;
+  int    vnum;
   int    num_prac;
   struct str_plrspells *next;
 };
