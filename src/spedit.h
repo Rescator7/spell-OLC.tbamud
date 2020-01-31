@@ -2,16 +2,8 @@
 #define unavailable             0
 #define available               1
 #define NUM_CHAR_POSITION       9
-#define NUM_SPELL_FLAGS         8
+#define NUM_SPELL_FLAGS         13
 #define MAX_SPELL_DELAY         50   /* this equal to 5 sec */
-#define IS_SPELL_OBJ(flags)     (flags & 1)
-#define IS_SPELL_SELF(flags)    (flags & (1 << 1))
-#define IS_SPELL_GROUP(flags)   (flags & (1 << 2))
-#define IS_SPELL_VICT(flags)    (flags & (1 << 3))
-#define IS_SPELL_VICTGRP(flags) (flags & (1 << 4))
-#define IS_SPELL_ROOM(flags)    (flags & (1 << 5))
-#define IS_SPELL_ACCDUR(flags)  (flags & (1 << 6))    
-#define IS_SPELL_ACCAFF(flags)  (flags & (1 << 7))
 #define SPELL                   'P'
 #define SKILL                   'K'
 
@@ -35,18 +27,18 @@ struct str_assign {
 };
 
 struct str_spells {
-   int  saved;
    char type;
-   int  serial;
+   int  vnum;
    int  status;
    int  min_pos;
    int  max_dam;
    char *name;
    char *delay;
-   int  flags;
+   int  targ_flags;
+   int  mag_flags;
    char *damages;
    char *effectiveness;
-   char *wear_off;
+   char *wear_off_msg;
    char *script;
    struct str_prot protfrom [6];
    struct str_appl applies [6];
