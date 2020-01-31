@@ -15,7 +15,7 @@
 
 extern char* NOEFFECT;
 extern struct str_spells *get_spell_by_vnum (int vnum);
-extern struct str_spells *get_spell_by_name (char *name);
+extern struct str_spells *get_spell_by_name (char *name, char type);
 
 ACMD(do_whirlwind);
 
@@ -87,6 +87,7 @@ int find_spell_assign (struct char_data *ch, struct str_spells *ptr)
  return -1;
 }
 
+// FIX ME... using num_prac is wrong
 int IS_SPELL_LEARNED (struct char_data *ch, int vnum) {
   struct str_plrspells *Q;
   struct str_spells *ptr;
@@ -156,13 +157,14 @@ void assign_spells (void)
 
  int i = 0;
  int VNUM = 0;
+ char buf[MAX_STRING_LENGTH];
  struct str_spells *Q;
  struct str_spell_assign {
     char *name;
     void *function;
     char type;
-    int  maxmana,
-         minmana,
+    int  manamax,
+         manamin,
          manachng,
          min_pos,
          targ_flags,
@@ -483,6 +485,7 @@ void assign_spells (void)
    Q->min_pos  = default_spells[i].min_pos;
    Q->targ_flags = default_spells[i].targ_flags;
    Q->mag_flags = default_spells[i].mag_flags;
+   Q->effectiveness = strdup("100");
 
    if (default_spells[i].wear_off_msg)
      Q->wear_off_msg = strdup(default_spells[i].wear_off_msg);
@@ -491,13 +494,20 @@ void assign_spells (void)
      Q->damages = strdup(default_spells[i].damages);
      Q->max_dam = 50;
    }
+   snprintf(buf, sizeof(buf), "(%d - (%d * self.level)) > %d ? (%d - (%d * self.level)) : %d",
+                              default_spells[i].manamax, default_spells[i].manachng, 
+                              default_spells[i].manamin,
+                              default_spells[i].manamax, default_spells[i].manachng, 
+                              default_spells[i].manamin);
    if (default_spells[i].FirstClass != CLASS_UNDEFINED) {
      Q->assign[0].class_num = default_spells[i].FirstClass;
      Q->assign[0].level = default_spells[i].FirstLevel;
+     Q->assign[0].num_mana = strdup(buf);
    }
    if (default_spells[i].SecondClass != CLASS_UNDEFINED) {
      Q->assign[1].class_num = default_spells[i].SecondClass;
      Q->assign[1].level = default_spells[i].SecondLevel;
+     Q->assign[0].num_mana = strdup(buf);
    }
    if (i++ == NUM_SPELLS)
      VNUM = MAX_SPELLS - NUM_SPELLS;
@@ -523,26 +533,28 @@ void call_ACMD (void (*function) (), struct char_data *ch, char *argument, int c
 ACMD(do_cast)
 {
  char *s, *targ = NULL;
- static const char *wrong_pos[] = 
-{ "You can't do much of anything like this!\r\n",
-  "You can't do much of anything like this!\r\n",
-  "You can't do much of anything like this!\r\n",
-  "You can't do much of anything like this!\r\n",
-  "You dream about great magical powers.\r\n",
-  "You cannot concentrate while resting.\r\n",
-  "You can't do this sitting!\r\n",
-  "Impossible! You can't concentrate enough!\r\n",
-  "Sorry, this spell isn't available!\r\n" };
+ static const char *wrong_pos[] = {
+"Lie still; you are DEAD!!! :-(\r\n",
+"You are in a pretty bad shape, unable to do anything!\r\n",
+"You are in a pretty bad shape, unable to do anything!\r\n",
+"All you can do right now is think about the stars!\r\n",
+"In your dreams, or what?\r\n",
+"Nah... You feel too relaxed to do that..\r\n",
+"Maybe you should get on your feet first?\r\n",
+"No way!  You're fighting for your life!\r\n"};
 
- struct char_data *vict;
+ struct char_data *vict = NULL;
  struct obj_data *ovict = NULL;
  struct str_spells *spell = NULL;
  struct affected_type af;
  int i, delay, rts_code = TRUE;
+ int effectiveness = 0;
+ int assign;
 
  if (IS_NPC(ch))
    return;
 
+ // for spell check that is is enclosed in ''
  if (subcmd == SCMD_SPELL) {
    s = strtok(argument, "'");
    if (s == NULL) {
@@ -561,18 +573,29 @@ ACMD(do_cast)
  send_to_char(ch, "searching for %s\r\n", s);
  
  if (subcmd == SCMD_SPELL)
-   spell = get_spell_by_name(s); 
+   spell = get_spell_by_name(s, SPELL); 
  else
    spell = get_spell_by_vnum(subcmd);
 
- if (!spell) {
+ // debuging only, remove
+ if (spell)
+   send_to_char(ch, "found %d\r\n", spell->vnum);
+
+ if (!spell || ((spell->status != available) && (GET_LEVEL(ch) < LVL_IMMORT))) {
    send_to_char (ch, "There's no no such %s available to you.\r\n", (subcmd == SCMD_SPELL) ? "spell" : "skill");
    return;
  }
- if ((spell->status != available) && (GET_LEVEL(ch) < LVL_IMMORT)) {
-   send_to_char (ch, "There's no such spell available to you.\r\n");
+
+ // for spells and skills with a function, we only check if status == available, and
+ // we return the control to it function.
+ if (spell->function) {
+   if (spell->type == SPELL)
+     call_ASPELL (spell->function, GET_LEVEL(ch), ch, vict, ovict);
+   else
+     call_ACMD (spell->function, ch, argument, 0, 0);
    return;
  }
+
  if (((spell->type == SPELL) && (subcmd != SCMD_SPELL)) ||
      ((spell->type == SKILL) && (subcmd == SCMD_SPELL))) {
    send_to_char (ch, "Huh?!?\r\n");
@@ -603,11 +626,30 @@ ACMD(do_cast)
    send_to_char (ch, "You can't cast this spell on someone else!\r\n");
    return;
  }
- if (!spell->effectiveness || (rand_number(1, 100) > 
-      formula_interpreter (ch, vict, spell->vnum, TRUE, spell->effectiveness, &rts_code))){
+
+ if (spell->effectiveness)
+   effectiveness = GET_SKILL(ch, spell->vnum) * 
+                   formula_interpreter (ch, vict, spell->vnum, TRUE, spell->effectiveness, &rts_code) / 100;
+
+ if (rand_number (0, 101) > effectiveness) {
    send_to_char (ch, "You lost your concentration!\r\n");
    return;
  }
+
+ // check logical with above IS_SPELL_LEARNED, maybe it should return assign or 0 then?!?
+ if ((assign = find_spell_assign (ch, spell)) == -1) {
+   send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
+   return;
+ }
+
+ if (spell->type == SPELL) {
+   int mana = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->assign[assign].num_mana, &rts_code);
+    if ((mana > 0) && (GET_MANA(ch) < mana) && (GET_LEVEL(ch) < LVL_IMMORT)) {
+      send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
+      return;
+    }
+ }
+
  if (spell->delay) {
    delay = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->delay, 
                                 &rts_code);
@@ -636,12 +678,6 @@ ACMD(do_cast)
        rts_code = TRUE; 
      }
 
- if (spell->function) {
-   if (spell->type == SPELL)
-     call_ASPELL (spell->function, GET_LEVEL(ch), ch, vict, ovict);
-   else
-     call_ACMD (spell->function, ch, argument, 0, 0);
- }
 
  if (spell->script)
    if (!perform_script (spell->script, ch, vict, ovict, spell->vnum, 0) && !rts_code)

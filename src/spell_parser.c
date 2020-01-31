@@ -20,6 +20,8 @@
 #include "dg_scripts.h"
 #include "fight.h"  /* for hit() */
 
+extern char *get_spell_name(int vnum);
+
 #define SINFO spell_info[spellnum]
 
 /* Global Variables definitions, used elsewhere */
@@ -91,7 +93,8 @@ static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
   int j, ofs = 0;
 
   *buf = '\0';
-  strlcpy(lbuf, skill_name(spellnum), sizeof(lbuf));
+  
+  strlcpy(lbuf, get_spell_name(spellnum), sizeof(lbuf));
 
   while (lbuf[ofs]) {
     for (j = 0; *(syls[j].org); j++) {

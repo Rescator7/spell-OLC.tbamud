@@ -37,8 +37,11 @@
 #include "prefedit.h"
 #include "ibt.h"
 #include "mud_event.h"
+#include "spedit.h"
 
 ACMD(do_formula);
+
+extern struct str_spells *get_spell_by_name(char *name, char type);
 
 /* local (file scope) functions */
 static int perform_dupe_check(struct descriptor_data *d);
@@ -535,6 +538,14 @@ void command_interpreter(struct char_data *ch, char *argument)
 
   if (*complete_cmd_info[cmd].command == '\n') {
     int found = 0;
+
+    struct str_spells *spell = get_spell_by_name(argument, SKILL);
+
+    if (spell) {
+      do_cast(ch, line, 1, spell->vnum); 
+      return;
+    }
+
     send_to_char(ch, "%s", CONFIG_HUH);
 
     for (cmd = 0; *cmd_info[cmd].command != '\n'; cmd++)

@@ -120,12 +120,12 @@ struct str_spells *get_spell_by_vnum(int vnum)
   return NULL;
 }
 
-struct str_spells *get_spell_by_name(char *name)
+struct str_spells *get_spell_by_name(char *name, char type)
 {
   struct str_spells *ptr;
 
   for (ptr = list_spells; ptr; ptr = ptr->next)
-    if (is_abbrev(ptr->name, name)) 
+    if (is_abbrev(name, ptr->name) && (ptr->type == type)) 
       return ptr;
   return NULL;
 }
