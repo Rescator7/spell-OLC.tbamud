@@ -154,6 +154,7 @@ const char *skill_name(int num)
     return ("UNDEFINED");
 }
 
+/*
 int find_skill_num(char *name)
 {
   int skindex, ok;
@@ -165,7 +166,7 @@ int find_skill_num(char *name)
       return (skindex);
 
     ok = TRUE;
-    strlcpy(tempbuf, spell_info[skindex].name, sizeof(tempbuf));	/* strlcpy: OK */
+    strlcpy(tempbuf, spell_info[skindex].name, sizeof(tempbuf));	// strlcpy: OK 
     temp = any_one_arg(tempbuf, first);
     temp2 = any_one_arg(name, first2);
     while (*first && *first2 && ok) {
@@ -181,6 +182,7 @@ int find_skill_num(char *name)
 
   return (-1);
 }
+*/
 
 /* This function is the very heart of the entire magic system.  All invocations
  * of all types of magic -- objects, spoken and unspoken PC and NPC spells, the

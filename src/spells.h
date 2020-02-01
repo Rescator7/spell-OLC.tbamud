@@ -198,11 +198,6 @@
 
 /*
 #define IS_SPELL_OBJ(spell)          ((spell)->targ_flags & 1)
-#define IS_SPELL_SELF(spell)         ((spell)->targ_flags & (1 << 1))
-#define IS_SPELL_GROUP(spell)        ((spell)->targ_flags & (1 << 2))
-#define IS_SPELL_VICT(spell)         ((spell)->targ_flags & (1 << 3))
-#define IS_SPELL_VICTGRP(spell)      ((spell)->targ_flags & (1 << 4))
-#define IS_SPELL_ROOM(spell)         ((spell)->targ_flags & (1 << 5))
 */
 
 struct spell_info_type {

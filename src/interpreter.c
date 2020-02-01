@@ -304,7 +304,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "sneak"    , "sneak"   , POS_STANDING, do_cast    , 1, SKILL_SNEAK },
   { "snoop"    , "snoop"   , POS_DEAD    , do_snoop    , LVL_GOD, 0 },
   { "spedit"   , "spe"     , POS_DEAD    , do_spedit   , LVL_BUILDER, 0 },
-  { "splist"   , "spliist" , POS_DEAD    , do_splist   , LVL_BUILDER, 0 },
+  { "splist"   , "splist"  , POS_DEAD    , do_splist   , LVL_BUILDER, 0 },
   { "socials"  , "socials" , POS_DEAD    , do_commands , 0, SCMD_SOCIALS },
   { "split"    , "split"   , POS_SITTING , do_split    , 1, 0 },
   { "stand"    , "st"      , POS_RESTING , do_stand    , 0, 0 },

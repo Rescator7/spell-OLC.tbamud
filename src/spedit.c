@@ -69,7 +69,7 @@ int is_assign_set(struct str_spells *spell)
      return 1;
  return 0;
 }
-
+ 
 int is_prot_set(struct str_spells *spell)
 {
  int i;
@@ -110,6 +110,32 @@ int find_spell_by_vnum (int vnum)
   return 0;
 }
 
+int find_skill_num (char *name) {
+  struct str_spells *ptr;
+  int first = -1; 
+  int cpt = 0;
+
+  for (ptr = list_spells; ptr; ptr = ptr->next) {
+    // we search skill only
+//    if (ptr->type != SKILL) continue;
+
+    // exact match
+    if (!str_cmp(name, ptr->name))
+      return ptr->vnum;
+
+    // we found a partial match
+    if (is_abbrev(name, ptr->name)) {
+       // count how many of them
+       cpt++;
+       if (first == -1) 
+         // memorise the first match
+         first = ptr->vnum;
+    }
+  }
+  // only 1 match return it, otherwise -1
+  return (cpt == 1) ? first : -1;
+}
+
 struct str_spells *get_spell_by_vnum(int vnum)
 {
   struct str_spells *ptr;
@@ -118,6 +144,19 @@ struct str_spells *get_spell_by_vnum(int vnum)
     if (ptr->vnum == vnum) 
       return ptr;
   return NULL;
+}
+
+int get_spell_level_by_vnum(int vnum, int class)
+{
+ int i;
+ struct str_spells *spell = get_spell_by_vnum(vnum);
+
+ if (spell) {
+   for (i=0; i<NUM_CLASSES; i++)
+     if (spell->assign[i].class_num == class)
+       return spell->assign[i].level;
+ }
+ return 0;
 }
 
 struct str_spells *get_spell_by_name(char *name, char type)
@@ -1250,8 +1289,7 @@ ACMD(do_spedit) {
 
 ACMD(do_splist) {
 {
- //char buf[MAX_STRING_LENGTH];
- char buf[65535];
+ char buf[MAX_STRING_LENGTH];
  int cpt = 0;
  int search_by_class = CLASS_UNDEFINED;
  int search_by_part_name = 0;

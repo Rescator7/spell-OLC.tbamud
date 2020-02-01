@@ -717,8 +717,9 @@ void boot_db(void)
   if (file_to_string_alloc(GREETINGS_FILE, &GREETINGS) == 0)
     prune_crlf(GREETINGS);
 
-  log("Loading spell definitions.");
-  mag_assign_spells();
+// old system
+//  log("Loading spell definitions.");
+//  mag_assign_spells();
 
   boot_world();
 
@@ -762,7 +763,7 @@ void boot_db(void)
 
   log("Sorting command list and spells.");
   sort_commands();
-  sort_spells();
+//  sort_spells();
 
   log("Booting mail system.");
   if (!scan_file()) {
@@ -3770,7 +3771,7 @@ static int check_object(struct obj_data *obj)
 static int check_object_spell_number(struct obj_data *obj, int val)
 {
   int error = FALSE;
-  const char *spellname;
+//  const char *spellname;
 
   if (GET_OBJ_VAL(obj, val) == -1 || GET_OBJ_VAL(obj, val) == 0) /* no spell */
     return (error);
@@ -3791,12 +3792,14 @@ static int check_object_spell_number(struct obj_data *obj, int val)
     return (error);
 
   /* Now check for unnamed spells. */
+/*
   spellname = skill_name(GET_OBJ_VAL(obj, val));
 
   if ((spellname == unused_spellname || !str_cmp("UNDEFINED", spellname)) && (error = TRUE))
     log("SYSERR: Object #%d (%s) uses '%s' spell #%d.",
 		GET_OBJ_VNUM(obj), obj->short_description, spellname,
 		GET_OBJ_VAL(obj, val));
+*/
 
   return (error);
 }
