@@ -139,6 +139,9 @@ int perform_script (char *str, struct char_data *self,
  p = str;
  b = (char *) &p;
 
+ if (!vict)
+   vict = self;
+
  for (ptr=0; ptr<strlen(p); ptr++) {
    cpt = 0;
    while (list_script[cpt].function) 

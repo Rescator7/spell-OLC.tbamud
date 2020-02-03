@@ -19,8 +19,11 @@
 #include "db.h"
 #include "dg_scripts.h"
 #include "fight.h"  /* for hit() */
+#include "spedit.h"
 
 extern char *get_spell_name(int vnum);
+extern void call_ASPELL (void (*function) (), int level, struct char_data *ch,
+                         struct char_data *vict, struct obj_data *obj);
 
 #define SINFO spell_info[spellnum]
 
@@ -32,7 +35,6 @@ const char *unused_spellname = "!UNUSED!"; /* So we can get &unused_spellname */
 /* Local (File Scope) Function Prototypes */
 static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch, struct obj_data *tobj);
 static void spello(int spl, const char *name, int max_mana, int min_mana, int mana_change, int minpos, int targets, int violent, int routines, const char *wearoff);
-static int mag_manacost(struct char_data *ch, int spellnum);
 
 /* Local (File Scope) Variables */
 struct syllable {
@@ -76,7 +78,7 @@ static struct syllable syls[] = {
 
 
 
-static int mag_manacost(struct char_data *ch, int spellnum)
+int mag_manacost(struct char_data *ch, int spellnum)
 {
   return MAX(SINFO.mana_max - (SINFO.mana_change *
 		    (GET_LEVEL(ch) - SINFO.min_level[(int) GET_CLASS(ch)])),
@@ -193,6 +195,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 	     struct obj_data *ovict, int spellnum, int level, int casttype)
 {
   int savetype;
+  struct str_spells *spell;
 
   if (spellnum < 1 || spellnum > TOP_SPELL_DEFINE)
     return (0);
@@ -209,8 +212,11 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     act("$n's magic fizzles out and dies.", FALSE, caster, 0, 0, TO_ROOM);
     return (0);
   }
+
+  spell = get_spell_by_vnum(spellnum); // bobo
+
   if (ROOM_FLAGGED(IN_ROOM(caster), ROOM_PEACEFUL) &&
-      (SINFO.violent || IS_SET(SINFO.routines, MAG_DAMAGE))) {
+     ((spell->mag_flags & MAG_DAMAGE) || (spell->mag_flags & MAG_VIOLENT))) {
     send_to_char(caster, "A flash of white light fills the room, dispelling your violent magic!\r\n");
     act("White light from no particular source suddenly fills the room, then vanishes.", FALSE, caster, 0, 0, TO_ROOM);
     return (0);
@@ -235,41 +241,45 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     break;
   }
 
-  if (IS_SET(SINFO.routines, MAG_DAMAGE))
+  if (spell->mag_flags & MAG_DAMAGE)
     if (mag_damage(level, caster, cvict, spellnum, savetype) == -1)
       return (-1);	/* Successful and target died, don't cast again. */
 
-  if (IS_SET(SINFO.routines, MAG_AFFECTS))
+  if (spell->mag_flags & MAG_AFFECTS)
     mag_affects(level, caster, cvict, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_UNAFFECTS))
+  if (spell->mag_flags & MAG_UNAFFECTS)
     mag_unaffects(level, caster, cvict, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_POINTS))
+  if (spell->mag_flags & MAG_POINTS)
     mag_points(level, caster, cvict, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_ALTER_OBJS))
+  if (spell->mag_flags & MAG_ALTER_OBJS)
     mag_alter_objs(level, caster, ovict, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_GROUPS))
+  if (spell->mag_flags & MAG_GROUPS)
     mag_groups(level, caster, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_MASSES))
+  if (spell->mag_flags & MAG_MASSES)
     mag_masses(level, caster, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_AREAS))
+  if (spell->mag_flags & MAG_AREAS)
     mag_areas(level, caster, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_SUMMONS))
+  if (spell->mag_flags & MAG_SUMMONS)
     mag_summons(level, caster, ovict, spellnum, savetype);
 
-  if (IS_SET(SINFO.routines, MAG_CREATIONS))
+  if (spell->mag_flags & MAG_CREATIONS)
     mag_creations(level, caster, spellnum);
 
-  if (IS_SET(SINFO.routines, MAG_ROOMS))
+  if (spell->mag_flags & MAG_ROOMS)
     mag_rooms(level, caster, spellnum);
 
-  if (IS_SET(SINFO.routines, MAG_MANUAL))
+  if ((spell->mag_flags & MAG_MANUAL) && spell->function) 
+    call_ASPELL (spell->function, GET_LEVEL(caster), caster, cvict, ovict);
+
+  /*
+  if (spell->mag_flags & MAG_MANUAL)
     switch (spellnum) {
     case SPELL_CHARM:		MANUAL_SPELL(spell_charm); break;
     case SPELL_CREATE_WATER:	MANUAL_SPELL(spell_create_water); break;
@@ -281,6 +291,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     case SPELL_WORD_OF_RECALL:  MANUAL_SPELL(spell_recall); break;
     case SPELL_TELEPORT:	MANUAL_SPELL(spell_teleport); break;
     }
+  */
 
   return (1);
 }
@@ -441,13 +452,16 @@ void mag_objectmagic(struct char_data *ch, struct obj_data *obj,
 int cast_spell(struct char_data *ch, struct char_data *tch,
 	           struct obj_data *tobj, int spellnum)
 {
+  struct str_spells *spell;
+
   if (spellnum < 0 || spellnum > TOP_SPELL_DEFINE) {
     log("SYSERR: cast_spell trying to call spellnum %d/%d.", spellnum,
 	TOP_SPELL_DEFINE);
     return (0);
   }
 
-  if (GET_POS(ch) < SINFO.min_position) {
+  spell = get_spell_by_vnum(spellnum);
+  if (GET_POS(ch) < spell->min_pos) {
     switch (GET_POS(ch)) {
       case POS_SLEEPING:
       send_to_char(ch, "You dream about great magical powers.\r\n");
@@ -471,15 +485,15 @@ int cast_spell(struct char_data *ch, struct char_data *tch,
     send_to_char(ch, "You are afraid you might hurt your master!\r\n");
     return (0);
   }
-  if ((tch != ch) && IS_SET(SINFO.targets, TAR_SELF_ONLY)) {
+  if ((tch != ch) && (spell->targ_flags & TAR_SELF_ONLY)) {
     send_to_char(ch, "You can only cast this spell upon yourself!\r\n");
     return (0);
   }
-  if ((tch == ch) && IS_SET(SINFO.targets, TAR_NOT_SELF)) {
+  if ((tch == ch) && (spell->targ_flags & TAR_NOT_SELF)) {
     send_to_char(ch, "You cannot cast this spell upon yourself!\r\n");
     return (0);
   }
-  if (IS_SET(SINFO.routines, MAG_GROUPS) && !GROUP(ch)) {
+  if ((spell->mag_flags & MAG_GROUPS) && !GROUP(ch)) {
     send_to_char(ch, "You can't cast this spell if you're not in a group!\r\n");
     return (0);
   }

@@ -30,6 +30,7 @@ extern int formula_interpreter (struct char_data *self, struct char_data *vict,
                                int spell_vnum, int syserr, char *cmd, int *rts_code);
 
 extern char *get_spell_wear_off (int vnum);
+extern int get_spell_apply(struct str_spells *spell, int pos);
 
 /* local file scope function prototypes */
 static int mag_materials(struct char_data *ch, IDXTYPE item0, IDXTYPE item1, IDXTYPE item2, int extract, int verbose);
@@ -330,9 +331,8 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
   struct affected_type af[MAX_SPELL_AFFECTS];
   bool accum_affect = FALSE, accum_duration = FALSE;
   const char *to_vict = NULL, *to_room = NULL;
-  int i, j, rts_code;
+  int i, j, rts_code, affect;
   struct str_spells *spell;
-
 
   if (victim == NULL || ch == NULL)
     return;
@@ -347,16 +347,26 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     new_affect(&(af[i]));
     af[i].spell = spellnum;
 
-    af[i].location = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].modifier, &rts_code);
+    int applnum = spell->applies[i].appl_num;
+
+    if (applnum <= APPLY_NONE) {
+      af[i].location = APPLY_NONE;
+      af[i].modifier = 0;
+    } else if (applnum < NUM_APPLIES) {
+             af[i].location = spell->applies[i].appl_num;
+             af[i].modifier = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].modifier, &rts_code);
+           } else {
+               affect = get_spell_apply(spell, i);
+               SET_BIT_AR(af[i].bitvector, affect - NUM_APPLIES);
+           }
+
     af[i].duration = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].duration, &rts_code);
 
-    if (spell->mag_flags && MAG_ACCDUR)
+    if (spell->mag_flags & MAG_ACCDUR)
       accum_duration = TRUE;
-    if (spell->mag_flags && MAG_ACCMOD)
-      accum_affect = TRUE;
 
-    // bobo
-    // take care of all the SET_BIT_ARR, to_vict, to_room
+    if (spell->mag_flags & MAG_ACCMOD)
+      accum_affect = TRUE;
 
     // specials spells that formula interpreter can't deal with:
     switch (spellnum) {
@@ -624,13 +634,16 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
   for (i = 0; i < MAX_SPELL_AFFECTS; i++)
     if (af[i].bitvector[0] || af[i].bitvector[1] ||
         af[i].bitvector[2] || af[i].bitvector[3] ||
-        (af[i].location != APPLY_NONE))
-      affect_join(victim, af+i, accum_duration, FALSE, accum_affect, FALSE);
-
+        (af[i].location != APPLY_NONE)) {
+      affect_join(victim, &af[i], accum_duration, FALSE, accum_affect, FALSE);
+    }
+// bobo this is going to be done by spell->script
+/*
   if (to_vict != NULL)
     act(to_vict, FALSE, victim, 0, ch, TO_CHAR);
   if (to_room != NULL)
     act(to_room, TRUE, victim, 0, ch, TO_ROOM);
+*/
 }
 
 /* This function is used to provide services to mag_groups.  This function is
@@ -700,6 +713,7 @@ void mag_masses(int level, struct char_data *ch, int spellnum, int savetype)
 void mag_areas(int level, struct char_data *ch, int spellnum, int savetype)
 {
   struct char_data *tch, *next_tch;
+  struct str_spells *spell;
   const char *to_char = NULL, *to_room = NULL;
 
   if (ch == NULL)
@@ -719,6 +733,7 @@ void mag_areas(int level, struct char_data *ch, int spellnum, int savetype)
   if (to_room != NULL)
     act(to_room, FALSE, ch, 0, 0, TO_ROOM);
 
+  spell = get_spell_by_vnum(spellnum);
 
   for (tch = world[IN_ROOM(ch)].people; tch; tch = next_tch) {
     next_tch = tch->next_in_room;
@@ -737,7 +752,7 @@ void mag_areas(int level, struct char_data *ch, int spellnum, int savetype)
       continue;
     if (!IS_NPC(ch) && IS_NPC(tch) && AFF_FLAGGED(tch, AFF_CHARM))
       continue;
-    if (!IS_NPC(tch) && spell_info[spellnum].violent && GROUP(tch) && GROUP(ch) && GROUP(ch) == GROUP(tch))
+    if (!IS_NPC(tch) && (spell->mag_flags & MAG_VIOLENT) && GROUP(tch) && GROUP(ch) && GROUP(ch) == GROUP(tch))
       continue;
 	if ((spellnum == SPELL_EARTHQUAKE) && AFF_FLAGGED(tch, AFF_FLYING))
 	  continue;
@@ -938,8 +953,13 @@ void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
     to_vict = "You don't feel so unlucky.";
     break;
   default:
+    spell = spellnum;
+    break;
+/*
+  default:
     log("SYSERR: unknown spellnum %d passed to mag_unaffects.", spellnum);
     return;
+*/
   }
 
   if (!affected_by_spell(victim, spell)) {

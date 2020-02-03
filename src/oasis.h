@@ -422,7 +422,11 @@ extern const char *nrm, *grn, *cyn, *yel, *YEL, *bln, *red;
 #define SPEDIT_GET_DELAY                24
 #define SPEDIT_GET_SCRIPT               25
 #define SPEDIT_GET_TYPE                 26
-
+#define SPEDIT_SHOW_MESSAGES            27
+#define SPEDIT_GET_MSG_WEAR_OFF         28
+#define SPEDIT_GET_MSG_TO_SELF          29
+#define SPEDIT_GET_MSG_TO_VICT          30
+#define SPEDIT_GET_MSG_TO_ROOM          31
 
 int  save_config( IDXTYPE nowhere );
 

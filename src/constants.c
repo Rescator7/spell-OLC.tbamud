@@ -989,6 +989,7 @@ const char *mag_flags[] =
 "CREATIONS",
 "MANUAL",
 "ROOMS",
+"VIOLENT",
 "ACCDUR",
 "ACCMOD" 
 };

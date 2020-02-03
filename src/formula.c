@@ -18,7 +18,7 @@
 #include "formula.h"
 #include "string.h"
 
-#define DEBUG_FORMULA
+//#define DEBUG_FORMULA
 
 void add_to_formula (struct formula **head_formula, int command, int value)
 {
@@ -199,8 +199,8 @@ int remove_brace (struct formula **head_formula, struct formula *C, // int * rts
  B = C->prev;
  A = B->prev;
 
- send_to_char(ch, "remove_brace\r\n");
 #ifdef DEBUG_FORMULA
+ send_to_char(ch, "remove_brace\r\n");
  show_ABC(ch, C);
 #endif
 
@@ -274,7 +274,6 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
 { 
  struct formula *A, *C;
 
- send_to_char(ch, "do_oper\r\n");
  if (!(A = B->prev) && (B->command != CODE_ART_NOT) 
                     && (B->command != CODE_ART_ADD)
                     && (B->command != CODE_ART_SUB)) {
@@ -408,7 +407,7 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
         if (strchr (priority_check[mode], CHAR_CODE(ptr->command))) {
           ptr = formula_do_oper (head_formula, ptr, spell_vnum, ch, rts_code);
           if (*rts_code) {
-            send_formula_error (ch, *rts_code, spell_vnum, syserr);
+//            send_formula_error (ch, *rts_code, spell_vnum, syserr);
             free_formula(head_formula);
             return 0; 
           }
@@ -421,7 +420,6 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
         brace = 0;
 
       if (++mode > 4) {  
-send_to_char(ch, "(in 2) ");
         brace = 0;
 //        if (!exit) {
 //          *rts_code = ERROR_5003;
@@ -459,6 +457,9 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
  int cpt_dice = 0, cpt_comma = 0;
  int cpt_char = 1;
 
+ if (!cmd) 
+   return 0;
+
  // remove all spaces in the formula, and truncate if cmd is bigger than my buffer 2048.
  // send_to_char(self, "len: %ld\r\n", strlen(cmd));
  buf[0] = ' ';
@@ -477,7 +478,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
  buf[cpt_char] = ' '; // fix me
  buf[cpt_char+1] = '\x0';
 
- send_to_char(self, "you ask: '%s' (%d)\r\n", buf, cpt_char);
+ //send_to_char(self, "you ask: '%s' (%d)\r\n", buf, cpt_char);
 
  if (strstr(buf, "+++")) {
    *rts_code = ERROR_5007;
@@ -527,7 +528,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
    if (!(type_act = get_formula_typeact ( buf, &i )) && (i<strlen(buf)-1)) 
      continue;              
 
-  send_to_char(self, "%d ", type_act);
+ // send_to_char(self, "%d ", type_act);
 
    if (!otype_act)  {
      if (strchr(bad_start_code, CHAR_CODE(type_act))) {
@@ -602,7 +603,6 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
                                  break;  
      } else {
          if (otype_act && ((otype_act != CODE_DIGIT) || (type_act != CODE_DIGIT))) {
-           send_to_char(self, "otype added: %d\r\n", otype_act);
            add_to_formula (&head_formula, otype_act, num);
            num = 0; 
          } 

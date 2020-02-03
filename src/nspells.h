@@ -1,5 +1,4 @@
 extern struct str_spells *list_spells;
-extern char *NOPERSON;
 extern const char *position_types[];
 int perform_script (char *str, struct char_data *self, 
                                struct char_data *vict, 

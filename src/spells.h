@@ -34,9 +34,10 @@
 #define MAG_CREATIONS	(1 << 9)
 #define MAG_MANUAL	(1 << 10)
 #define MAG_ROOMS	(1 << 11)
-#define MAG_ACCDUR      (1 << 12)
-#define MAG_ACCMOD      (1 << 13)
-#define NUM_MAG         14
+#define MAG_VIOLENT     (1 << 12)
+#define MAG_ACCDUR      (1 << 13)
+#define MAG_ACCMOD      (1 << 14)
+#define NUM_MAG         15
 
 #define TYPE_UNDEFINED               (-1)
 #define SPELL_RESERVED_DBC            0  /* SKILL NUMBER ZERO -- RESERVED */

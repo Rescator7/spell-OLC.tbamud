@@ -12,10 +12,12 @@
 #include "code.h"
 #include "modify.h"
 #include "db.h"
+#include "config.h"
 
-extern char* NOEFFECT;
 extern struct str_spells *get_spell_by_vnum (int vnum);
 extern struct str_spells *get_spell_by_name (char *name, char type);
+extern int get_spell_level_by_vnum(int vnum, int class);
+extern int mag_manacost(struct char_data *ch, int spellnum);
 
 ACMD(do_whirlwind);
 
@@ -80,10 +82,9 @@ int find_spell_assign (struct char_data *ch, struct str_spells *ptr)
 {
  int i;
  
- for (i=0; i<6; i++)
-   if ( ((ptr->assign[i].class_num  < NUM_CLASSES)    && 
-         (ptr->assign[i].class_num == GET_CLASS(ch))) )
-    return i;
+ for (i=0; i<NUM_CLASSES; i++)
+   if (ptr->assign[i].class_num == GET_CLASS(ch))
+     return i;
  return -1;
 }
 
@@ -115,7 +116,7 @@ char *get_spell_wear_off (int vnum)
 
  for (Q = list_spells; Q; Q=Q->next)
    if (Q->vnum == vnum)
-     return (Q->wear_off_msg);
+     return (Q->messages.wear_off);
  return NULL;
 }
 
@@ -157,6 +158,7 @@ void assign_spells (void)
 
  int i = 0;
  int VNUM = 0;
+ int len = 0;
  char buf[MAX_STRING_LENGTH];
  struct str_spells *Q;
  struct str_spell_assign {
@@ -168,7 +170,6 @@ void assign_spells (void)
          manachng,
          min_pos,
          targ_flags,
-         violent_flags,
          mag_flags,
          FirstClass, FirstLevel,
          SecondClass, SecondLevel;
@@ -179,439 +180,587 @@ void assign_spells (void)
     char *sapply_modifier,
          *sapply_duration;
     char *damages;
+    char *to_vict,
+         *to_room;
     char *wear_off_msg;
  } default_spells[] = {
-{"armor",          NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS | MAG_ACCDUR, 
+{"armor",          NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM, MAG_AFFECTS | MAG_ACCDUR, 
                                          CLASS_MAGIC_USER, 4,
                                          CLASS_CLERIC, 1,
                                          APPLY_AC, "-20", "24",
                                          APPLY_NONE, NULL, NULL,
                                          NULL, 
+                                         "You feel someone protecting you.",
+                                         NULL,
                                          "You feel less protected."},
-{"teleport",       spell_teleport      , SPELL, 75, 50, 3, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_MANUAL,
+{"teleport",       spell_teleport      , SPELL, 75, 50, 3, POS_STANDING, TAR_CHAR_ROOM, MAG_MANUAL,
                                          CLASS_UNDEFINED, 0,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"bless",          NULL                , SPELL, 35, 5, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV, FALSE, 
+{"bless",          NULL                , SPELL, 35, 5, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV, 
                                                                         MAG_AFFECTS | MAG_ALTER_OBJS  | MAG_ACCDUR,
                                          CLASS_CLERIC, 5,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_HITROLL, "2", "6",
                                          APPLY_SAVING_SPELL, "-1", "6",
                                          NULL,
+                                         "You feel righteous.",
+                                         NULL,
 	                                 "You feel less righteous."},
-{"blindness",      NULL                , SPELL, 35, 25, 1, POS_STANDING,  TAR_CHAR_ROOM | TAR_NOT_SELF, FALSE, MAG_AFFECTS,
+{"blindness",      NULL                , SPELL, 35, 25, 1, POS_STANDING,  TAR_CHAR_ROOM | TAR_NOT_SELF, MAG_AFFECTS,
                                          CLASS_MAGIC_USER, 9,
                                          CLASS_CLERIC, 6,
                                          APPLY_HITROLL, "-4", "2",
                                          APPLY_AC, "40", "2",
                                          NULL,
+                                         "You have been blinded!",
+                                         "$n seems to be blinded!",
 	                                 "You feel a cloak of blindness dissolve."},
-{"burning hands",  NULL                , SPELL, 30, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"burning hands",  NULL                , SPELL, 30, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 5,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(3, self.class == 0 ? 8 : 6) + 3",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"call lightning", NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"call lightning", NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_CLERIC, 15,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(7, 8) + 7",
+                                         NULL,
+                                         NULL,
                                          NULL},
-{"charm person",   spell_charm         , SPELL, 75, 50, 2, POS_FIGHTING, TAR_CHAR_ROOM | TAR_NOT_SELF, TRUE, MAG_MANUAL,
+{"charm person",   spell_charm         , SPELL, 75, 50, 2, POS_FIGHTING, TAR_CHAR_ROOM | TAR_NOT_SELF, MAG_MANUAL | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 16,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 "You feel more self-confident."},
 {"chill touch",    NULL                , SPELL, 30, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, 
-                                                                         TRUE, MAG_DAMAGE | MAG_AFFECTS | MAG_ACCDUR,
+                                                                         MAG_DAMAGE | MAG_VIOLENT | MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_MAGIC_USER, 3,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_STR, "-1", "4",
                                          APPLY_NONE, NULL, NULL,
 	                                 "dice(1, self.class == 0 ? 8 : 6) + 1", 
+                                         "You feel your strength wither!",
+                                         NULL,
 	                                 "You feel your strength return."},
-{"clone",          NULL                , SPELL, 80, 65, 5, POS_STANDING, TAR_IGNORE, FALSE, MAG_SUMMONS,
+{"clone",          NULL                , SPELL, 80, 65, 5, POS_STANDING, TAR_IGNORE, MAG_SUMMONS,
                                          CLASS_MAGIC_USER, 30,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"color spray",    NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"color spray",    NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 11,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(9, self.class == 0 ? 8 : 6) + 9",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"control weather",NULL                , SPELL, 75, 25, 5, POS_STANDING, TAR_IGNORE, FALSE, MAG_MANUAL,
+{"control weather",NULL                , SPELL, 75, 25, 5, POS_STANDING, TAR_IGNORE, MAG_MANUAL,
                                          CLASS_CLERIC, 17,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL}, // VERIFY MAG_MANUAL
-{"create food",    NULL                , SPELL, 30, 5, 4, POS_STANDING, TAR_IGNORE, FALSE, MAG_CREATIONS,
+{"create food",    NULL                , SPELL, 30, 5, 4, POS_STANDING, TAR_IGNORE, MAG_CREATIONS,
                                          CLASS_CLERIC, 2,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"create water",   spell_create_water  , SPELL,  30, 5, 4, POS_STANDING, TAR_OBJ_INV | TAR_OBJ_EQUIP, FALSE, MAG_MANUAL,
+{"create water",   spell_create_water  , SPELL,  30, 5, 4, POS_STANDING, TAR_OBJ_INV | TAR_OBJ_EQUIP, MAG_MANUAL,
                                          CLASS_CLERIC, 2,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"cure blind",     NULL                , SPELL, 30, 5, 2, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_UNAFFECTS,
+{"cure blind",     NULL                , SPELL, 30, 5, 2, POS_STANDING, TAR_CHAR_ROOM, MAG_UNAFFECTS,
                                          CLASS_CLERIC, 4,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"cure critic",    NULL                , SPELL, 30, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_POINTS,
+{"cure critic",    NULL                , SPELL, 30, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, MAG_POINTS,
                                          CLASS_CLERIC, 9,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"cure light",     NULL                , SPELL, 30, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_POINTS,
+{"cure light",     NULL                , SPELL, 30, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, MAG_POINTS,
                                          CLASS_CLERIC, 1,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"curse",          NULL                , SPELL, 80, 50, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV, TRUE, 
-                                                           MAG_AFFECTS | MAG_ALTER_OBJS | MAG_ACCDUR | MAG_ACCMOD,
+{"curse",          NULL                , SPELL, 80, 50, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV, 
+                                                           MAG_VIOLENT | MAG_AFFECTS | MAG_ALTER_OBJS | MAG_ACCDUR | MAG_ACCMOD,
                                          CLASS_MAGIC_USER, 14,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_HITROLL, "-1", "1 + (self.level / 2)",
                                          APPLY_DAMROLL, "-1", "1 + (self.level / 2)",
                                          NULL,
+                                         "You feel very uncomfortable.",
+                                         "$n briefly glows red!",
 	                                 "You feel more optimistic."},
-{"detect alignment",NULL               , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"detect alignment",NULL               , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_CLERIC, 4,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_DETECT_ALIGN, NULL, "self.level + 12", // check code, it's not always self.level...
+                                         AFF_DETECT_ALIGN + NUM_APPLIES, NULL, "self.level + 12", // check code, it's not always self.level...
                                          APPLY_NONE, NULL, NULL,
+                                         NULL,
+                                         "Your eyes tingle.",
                                          NULL,
 	                                 "You feel less aware."},
-{"detect invisibility", NULL           , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"detect invisibility", NULL           , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_MAGIC_USER, 2,
                                          CLASS_CLERIC, 6,
-                                         AFF_DETECT_INVIS, NULL, "self.level + 12",
+                                         AFF_DETECT_INVIS + NUM_APPLIES, NULL, "self.level + 12",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "Your eyes tingle.",
+                                         NULL,
 	                                 "Your eyes stop tingling."},
-{"detect magic",   NULL                , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"detect magic",   NULL                , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_MAGIC_USER, 2,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_DETECT_MAGIC, 0, "self.level + 12",
+                                         AFF_DETECT_MAGIC + NUM_APPLIES, 0, "self.level + 12",
                                          APPLY_NONE, NULL, NULL,
+                                         NULL,
+                                         "Your eyes tingle.",
                                          NULL,
 	                                 "The detect magic wears off."},
 {"detect poison",  spell_detect_poison , SPELL, 15, 5, 1, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
-                                                          TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
+                                                          TAR_OBJ_ROOM, MAG_MANUAL,
                                          CLASS_MAGIC_USER, 10,
                                          CLASS_CLERIC, 3,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 "The detect poison wears off."},
-{"dispel evil",    NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"dispel evil",    NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_CLERIC, 14,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(6, 8) + 6", // SEE: magic.c, this is more complicated than this, add spec_proc instead?
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"earthquake",     NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_IGNORE, TRUE, MAG_AREAS,
+{"earthquake",     NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_IGNORE, MAG_AREAS | MAG_VIOLENT,
                                          CLASS_CLERIC, 12,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(2, 8) + self.level",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"enchant weapon", spell_enchant_weapon, SPELL, 150, 100, 10, POS_STANDING, TAR_OBJ_INV, FALSE, MAG_MANUAL,
+{"enchant weapon", spell_enchant_weapon, SPELL, 150, 100, 10, POS_STANDING, TAR_OBJ_INV, MAG_MANUAL,
                                          CLASS_MAGIC_USER, 26,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"energy drain",   NULL                , SPELL, 40, 25, 1, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, 
-                                                           MAG_DAMAGE | MAG_MANUAL,
+{"energy drain",   NULL                , SPELL, 40, 25, 1, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, 
+                                                           MAG_DAMAGE | MAG_VIOLENT | MAG_MANUAL,
                                          CLASS_MAGIC_USER, 13,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "vict.level <= 2 ? 100 : dice(1, 10)",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"fireball",       NULL                , SPELL, 40, 30, 2, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"fireball",       NULL                , SPELL, 40, 30, 2, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 15,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(11, self.class == 0 ? 8 : 6) + 11",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"harm",           NULL                , SPELL, 75, 45, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"harm",           NULL                , SPELL, 75, 45, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_CLERIC, 19,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(8, 8) + 8",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"heal",           NULL                , SPELL, 60, 40, 3, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_POINTS | MAG_UNAFFECTS,
+{"heal",           NULL                , SPELL, 60, 40, 3, POS_FIGHTING, TAR_CHAR_ROOM, MAG_POINTS | MAG_UNAFFECTS,
                                          CLASS_CLERIC, 16,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
 {"invisibility",   NULL                , SPELL, 35, 25, 1, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
-                                                           TAR_OBJ_ROOM, FALSE, MAG_AFFECTS | MAG_ALTER_OBJS | MAG_ACCDUR,
+                                                           TAR_OBJ_ROOM, MAG_AFFECTS | MAG_ALTER_OBJS | MAG_ACCDUR,
                                          CLASS_MAGIC_USER, 4,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_AC, "-40", "12 + (self.level / 4)",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "You vanish.",
+                                         "$n slowly fades out of existence.",
 	                                 "You feel yourself exposed."},
-{"lightning bolt", NULL                , SPELL, 30, 15, 1, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"lightning bolt", NULL                , SPELL, 30, 15, 1, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 9,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(7, self.class == 0 ? 8 : 6) + 7",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"locate object",  spell_locate_object,  SPELL, 25, 20, 1, POS_STANDING, TAR_OBJ_WORLD, FALSE, MAG_MANUAL,
+{"locate object",  spell_locate_object,  SPELL, 25, 20, 1, POS_STANDING, TAR_OBJ_WORLD, MAG_MANUAL,
                                          CLASS_MAGIC_USER, 6,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"magic missile",  NULL                , SPELL, 25, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"magic missile",  NULL                , SPELL, 25, 10, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 1,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
 	                                 "dice(1, self.class == 0 ? 8 : 6) + 1", 
+                                         NULL,
+                                         NULL,
                                          NULL},
-{"poison",         NULL                , SPELL, 50, 20, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_NOT_SELF | TAR_OBJ_INV, TRUE,
-	                                                   MAG_AFFECTS | MAG_ALTER_OBJS,
+{"poison",         NULL                , SPELL, 50, 20, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_NOT_SELF | TAR_OBJ_INV,
+	                                                   MAG_VIOLENT | MAG_AFFECTS | MAG_ALTER_OBJS,
                                          CLASS_MAGIC_USER, 14,
                                          CLASS_CLERIC, 8,
                                          APPLY_STR, "-2", "self.level",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "You feel very sick.",
+                                         "$n gets violently ill!",
 	                                 "You feel less sick."},
-{"protection from evil", NULL          , SPELL, 40, 10, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"protection from evil", NULL          , SPELL, 40, 10, 3, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_CLERIC, 8,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_PROTECT_EVIL, NULL, "24",
+                                         AFF_PROTECT_EVIL + NUM_APPLIES, NULL, "24",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "You feel invulnerable!",
+                                         NULL,
 	                                 "You feel less protected."},
-{"remove curse",   NULL                , SPELL, 45, 25, 5, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_EQUIP, FALSE,
+{"remove curse",   NULL                , SPELL, 45, 25, 5, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_EQUIP,
 	                                                   MAG_UNAFFECTS | MAG_ALTER_OBJS,
                                          CLASS_CLERIC, 26,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"sanctuary",      NULL                , SPELL, 110, 85, 5, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"sanctuary",      NULL                , SPELL, 110, 85, 5, POS_STANDING, TAR_CHAR_ROOM, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_CLERIC, 15,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_SANCTUARY, NULL, "4",
+                                         AFF_SANCTUARY + NUM_APPLIES, NULL, "4",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "A white aura momentarily surrounds you.",
+                                         "$n is surrounded by a white aura.",
 	                                 "The white aura around your body fades."},
-{"shocking grasp", NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"shocking grasp", NULL                , SPELL, 30, 15, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 7,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(5, self.class == 0 ? 8 : 6) + 5",
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"sleep",          NULL                , SPELL, 40, 25, 5, POS_STANDING, TAR_CHAR_ROOM, TRUE, MAG_AFFECTS,
+{"sleep",          NULL                , SPELL, 40, 25, 5, POS_STANDING, TAR_CHAR_ROOM, MAG_AFFECTS | MAG_VIOLENT,
                                          CLASS_MAGIC_USER, 8,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_SLEEP, NULL, "self.level / 4",
+                                         AFF_SLEEP + NUM_APPLIES, NULL, "self.level / 4",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 "You feel less tired."},
-{"strength",       NULL                , SPELL, 35, 30, 1, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS | MAG_ACCDUR | MAG_ACCMOD,
+{"strength",       NULL                , SPELL, 35, 30, 1, POS_STANDING, TAR_CHAR_ROOM, MAG_AFFECTS | MAG_ACCDUR | MAG_ACCMOD,
                                          CLASS_MAGIC_USER, 6,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_STR, "1 + (self.level > 18)", "(self.level / 2) + 4",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "You feel stronger!",
+                                         NULL,
 	                                 "You feel weaker."},
-{"summon",         spell_summon        , SPELL, 75, 50, 3, POS_STANDING, TAR_CHAR_WORLD | TAR_NOT_SELF, FALSE, MAG_MANUAL,
+{"summon",         spell_summon        , SPELL, 75, 50, 3, POS_STANDING, TAR_CHAR_WORLD | TAR_NOT_SELF, MAG_MANUAL,
                                          CLASS_CLERIC, 10,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"ventriloquate",  NULL                , SPELL, 0, 0, 0, 0, 0, 0, 0, CLASS_UNDEFINED, 0, CLASS_UNDEFINED, 0, 
+{"ventriloquate",  NULL                , SPELL, 0, 0, 0, 0, 0, 0, CLASS_UNDEFINED, 0, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"word of recall", spell_recall        , SPELL, 20, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_MANUAL,
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"word of recall", spell_recall        , SPELL, 20, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, MAG_MANUAL,
                                          CLASS_CLERIC, 12,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
 {"remove poison",  NULL                , SPELL, 40, 8, 4, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
-                                                          TAR_OBJ_ROOM, FALSE, MAG_UNAFFECTS | MAG_ALTER_OBJS,
+                                                          TAR_OBJ_ROOM, MAG_UNAFFECTS | MAG_ALTER_OBJS,
                                          CLASS_CLERIC, 10,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"sense life",     NULL                , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"sense life",     NULL                , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_CLERIC, 18,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_SENSE_LIFE, NULL, "self.level",
+                                         AFF_SENSE_LIFE + NUM_APPLIES, NULL, "self.level",
                                          APPLY_NONE, NULL, NULL,
+                                         NULL,
+                                         "Your feel your awareness improve.",
                                          NULL,
 	                                 "You feel less aware of your surroundings."},
-{"animate dead",   NULL                , SPELL, 35, 10, 3, POS_STANDING, TAR_OBJ_ROOM, FALSE, MAG_SUMMONS, 
+{"animate dead",   NULL                , SPELL, 35, 10, 3, POS_STANDING, TAR_OBJ_ROOM, MAG_SUMMONS, 
                                          CLASS_UNDEFINED, 0,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
                                          NULL},
-{"dispel good",    NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
+{"dispel good",    NULL                , SPELL, 40, 25, 3, POS_FIGHTING, TAR_CHAR_ROOM | TAR_FIGHT_VICT, MAG_DAMAGE | MAG_VIOLENT,
                                          CLASS_CLERIC, 14,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          "dice(6, 8) + 6", // SEE: magic.c, this is more complicated than this, add spec_proc instead?
+                                         NULL,
+                                         NULL,
                                          NULL},
-{"group armor",    NULL                , SPELL, 50, 30, 2, POS_STANDING, TAR_IGNORE, FALSE, MAG_GROUPS,
+{"group armor",    NULL                , SPELL, 50, 30, 2, POS_STANDING, TAR_IGNORE, MAG_GROUPS,
                                          CLASS_CLERIC, 9,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"group heal",     NULL                , SPELL, 80, 60, 5, POS_STANDING, TAR_IGNORE, FALSE, MAG_GROUPS,
+{"group heal",     NULL                , SPELL, 80, 60, 5, POS_STANDING, TAR_IGNORE, MAG_GROUPS,
                                          CLASS_CLERIC, 22,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"group recall",   NULL                , SPELL, 0, 0, 0, 0, 0, 0, 0, CLASS_UNDEFINED, 0, CLASS_UNDEFINED, 0, 
+{"group recall",   NULL                , SPELL, 0, 0, 0, 0, 0, 0, CLASS_UNDEFINED, 0, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"infravision",    NULL                , SPELL, 25, 10, 1, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"infravision",    NULL                , SPELL, 25, 10, 1, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_MAGIC_USER, 3,
                                          CLASS_CLERIC, 7,
-                                         AFF_INFRAVISION, NULL, "12 + self.level",
+                                         AFF_INFRAVISION + NUM_APPLIES, NULL, "12 + self.level",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "Your eyes glow red.",
+                                         "$n's eyes glow red.",
 	                                 "Your night vision seems to fade."},
-{"waterwalk",      NULL                , SPELL, 40, 20, 2, POS_STANDING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"waterwalk",      NULL                , SPELL, 40, 20, 2, POS_STANDING, TAR_CHAR_ROOM, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_UNDEFINED, 0,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_WATERWALK, NULL, "24",
+                                         AFF_WATERWALK + NUM_APPLIES, NULL, "24",
                                          APPLY_NONE, NULL, NULL,
+                                         NULL,
+                                         "You feel webbing between your toes.",
                                          NULL,
 	                                 "Your feet seem less buoyant."},
 {"identify",       spell_identify      , SPELL, 50, 25, 5, POS_STANDING, TAR_CHAR_ROOM | TAR_OBJ_INV | 
-                                         TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
+                                         TAR_OBJ_ROOM, MAG_MANUAL,
                                          CLASS_MAGIC_USER, 20,
                                          CLASS_CLERIC, 11,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
                                          NULL},
-{"fly",            NULL                , SPELL, 40, 20, 2, POS_FIGHTING, TAR_CHAR_ROOM, FALSE, MAG_AFFECTS | MAG_ACCDUR,
+{"fly",            NULL                , SPELL, 40, 20, 2, POS_FIGHTING, TAR_CHAR_ROOM, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_MAGIC_USER, 22,
                                          CLASS_UNDEFINED, 0,
-                                         AFF_FLYING, NULL, "24",
+                                         AFF_FLYING + NUM_APPLIES, NULL, "24",
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "You float above the ground.",
+                                         NULL,
 	                                 "You drift slowly to the ground."},
-{"darkness",       NULL                , SPELL, 30, 5, 4, POS_STANDING, TAR_IGNORE, FALSE, MAG_ROOMS,
+{"darkness",       NULL                , SPELL, 30, 5, 4, POS_STANDING, TAR_IGNORE, MAG_ROOMS,
                                          CLASS_CLERIC, 12,
                                          CLASS_UNDEFINED, 0,
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         NULL,
+                                         NULL,
 	                                 NULL},
-{"backstab",       do_backstab         , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 3, CLASS_UNDEFINED, 0, 
+{"backstab",       do_backstab         , SKILL, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 3, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"bash",           do_bash             , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 12, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"bash",           do_bash             , SKILL, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 12, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"hide",           do_hide             , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 5, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"hide",           do_hide             , SKILL, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 5, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"kick",           do_kick             , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 1, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"kick",           do_kick             , SKILL, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 1, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"pick lock",      NULL                , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 2, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"pick lock",      NULL                , SKILL, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 2, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"whirlwind",      do_whirlwind        , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 16, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"whirlwind",      do_whirlwind        , SKILL, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 16, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"rescue",         do_rescue           , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 3, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"rescue",         do_rescue           , SKILL, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 3, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"sneak",          do_sneak            , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 1, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"sneak",          do_sneak            , SKILL, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 1, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"steal",          do_steal            , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 4, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"steal",          do_steal            , SKILL, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 4, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"track",          do_track            , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 6, 
-                                                                     CLASS_WARRIOR, 9, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"track",          do_track            , SKILL, 0, 0, 0, 0, 0, 0, CLASS_THIEF, 6, 
+                                                                  CLASS_WARRIOR, 9, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{"bandage",        do_bandage          , SKILL, 0, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 7, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{"bandage",        do_bandage          , SKILL, 0, 0, 0, 0, 0, 0, CLASS_WARRIOR, 7, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL},
-{ NULL,            NULL                , SPELL, 0, 0, 0, 0, 0, 0, 0, CLASS_UNDEFINED, 0, CLASS_UNDEFINED, 0, 
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL},
+{ NULL,            NULL                , SPELL, 0, 0, 0, 0, 0, 0, CLASS_UNDEFINED, 0, CLASS_UNDEFINED, 0, 
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
-                                         NULL, NULL}
+                                         NULL, 
+                                         NULL,
+                                         NULL,
+                                         NULL}
 };
 
 /*
@@ -640,7 +789,7 @@ void assign_spells (void)
    Q->effectiveness = strdup("100");
 
    if (default_spells[i].wear_off_msg)
-     Q->wear_off_msg = strdup(default_spells[i].wear_off_msg);
+     Q->messages.wear_off = strdup(default_spells[i].wear_off_msg);
 
    if (default_spells[i].damages) {
      Q->damages = strdup(default_spells[i].damages);
@@ -675,6 +824,17 @@ void assign_spells (void)
      if (default_spells[i].sapply_duration)
        Q->applies[1].duration = strdup(default_spells[i].sapply_duration);
    }
+
+   buf[0] = '\x0';
+   if (default_spells[i].to_vict)
+    len = snprintf(buf, sizeof(buf), "SAY_TO_VICT {\"%s\"};\r\n", default_spells[i].to_vict);
+
+   if (default_spells[i].to_room)
+     snprintf(buf + len, sizeof(buf) - len, "SAY_TO_ROOM {\"%s\"};\r\n", default_spells[i].to_room);
+
+   if (*buf)
+     Q->script = strdup(buf);
+
    if (i++ == NUM_SPELLS)
      VNUM = MAX_SPELLS - NUM_SPELLS;
 
@@ -709,13 +869,17 @@ ACMD(do_cast)
 "Maybe you should get on your feet first?\r\n",
 "No way!  You're fighting for your life!\r\n"};
 
+ struct char_data *tch = NULL;
+ struct obj_data *tobj = NULL;
  struct char_data *vict = NULL;
  struct obj_data *ovict = NULL;
  struct str_spells *spell = NULL;
  struct affected_type af;
  int i, delay, rts_code = TRUE;
  int effectiveness = 0;
- int assign;
+ int number;
+ int level, assign, target = 0;
+ int mana = 0;
 
  if (IS_NPC(ch))
    return;
@@ -747,24 +911,33 @@ ACMD(do_cast)
  if (spell)
    send_to_char(ch, "found %d\r\n", spell->vnum);
 
- if (!spell || ((spell->status != available) && (GET_LEVEL(ch) < LVL_IMMORT))) {
-   send_to_char (ch, "There's no no such %s available to you.\r\n", (subcmd == SCMD_SPELL) ? "spell" : "skill");
+ if (!spell || (spell->status != available)) {
+   if (subcmd == SCMD_SPELL)
+     send_to_char(ch, "Cast what?!?\r\n");
+   else
+     send_to_char(ch, "%s", HUH);  
    return;
  }
 
  // for spells and skills with a function, we only check if status == available, and
  // we return the control to it function.
  if (spell->function) {
-   if (spell->type == SPELL)
-     call_ASPELL (spell->function, GET_LEVEL(ch), ch, vict, ovict);
-   else
+   if (spell->type == SPELL) {
+//     call_ASPELL (spell->function, GET_LEVEL(ch), ch, vict, ovict);
+   }
+   else {
      call_ACMD (spell->function, ch, argument, 0, 0);
-   return;
+     return;
+   }
  }
-
  if (((spell->type == SPELL) && (subcmd != SCMD_SPELL)) ||
      ((spell->type == SKILL) && (subcmd == SCMD_SPELL))) {
-   send_to_char (ch, "Huh?!?\r\n");
+   send_to_char (ch, "%s", HUH);
+   return;
+ }
+ level = get_spell_level_by_vnum(spell->vnum, GET_CLASS(ch));
+ if (GET_LEVEL(ch) < level) {
+   send_to_char(ch, "You do not know that %s!\r\n", (spell->type == SPELL) ? "spell" : "skill");
    return;
  }
  if ((GET_LEVEL(ch) < LVL_IMMORT) && !IS_SPELL_LEARNED (ch, spell->vnum)) {
@@ -775,23 +948,87 @@ ACMD(do_cast)
    send_to_char (ch, "%s", wrong_pos[(int) GET_POS(ch)]);
    return;
  }
- if (!targ)
-   vict = ch;
- else {
-    skip_spaces (&targ);
-    if (!(vict = get_char_room_vis (ch, targ, NULL))) {
-      send_to_char (ch, "%s", NOPERSON);
+
+/* Find the target */
+  if (targ != NULL) {
+    char arg[MAX_INPUT_LENGTH];
+
+    strlcpy(arg, targ, sizeof(arg));
+    one_argument(arg, targ);
+    skip_spaces(&targ);
+
+    /* Copy target to global cast_arg2, for use in spells like locate object */
+    strcpy(cast_arg2, targ);
+  }
+
+  if (spell->targ_flags & TAR_IGNORE) {
+    target = TRUE;
+  } else if (targ != NULL && *targ) {
+    number = get_number(&targ);
+    if (!target && (spell->targ_flags & TAR_CHAR_ROOM)) {
+      if ((tch = get_char_vis(ch, targ, &number, FIND_CHAR_ROOM)) != NULL)
+        target = TRUE;
+    }
+    if (!target && (spell->targ_flags & TAR_CHAR_WORLD))
+      if ((tch = get_char_vis(ch, targ, &number, FIND_CHAR_WORLD)) != NULL)
+        target = TRUE;
+
+    if (!target && (spell->targ_flags & TAR_OBJ_INV))
+      if ((tobj = get_obj_in_list_vis(ch, targ, &number, ch->carrying)) != NULL)
+        target = TRUE;
+
+    if (!target && (spell->targ_flags & TAR_OBJ_EQUIP)) {
+      for (i = 0; !target && i < NUM_WEARS; i++)
+        if (GET_EQ(ch, i) && isname(targ, GET_EQ(ch, i)->name)) {
+          tobj = GET_EQ(ch, i);
+          target = TRUE;
+        }
+    }
+    if (!target && (spell->targ_flags & TAR_OBJ_ROOM))
+      if ((tobj = get_obj_in_list_vis(ch, targ, &number, world[IN_ROOM(ch)].contents)) != NULL)
+        target = TRUE;
+
+    if (!target && (spell->targ_flags & TAR_OBJ_WORLD))
+      if ((tobj = get_obj_vis(ch, targ, &number)) != NULL)
+        target = TRUE;
+
+  } else {                      /* if target string is empty */
+ if (!target && (spell->targ_flags & TAR_FIGHT_SELF))
+      if (FIGHTING(ch) != NULL) {
+        tch = ch;
+        target = TRUE;
+      }
+    if (!target && (spell->targ_flags & TAR_FIGHT_VICT))
+      if (FIGHTING(ch) != NULL) {
+        tch = FIGHTING(ch);
+        target = TRUE;
+      }
+    /* if no target specified, and the spell isn't violent, default to self */
+    if (!target && ((spell->targ_flags & TAR_CHAR_ROOM) || (spell->targ_flags & TAR_SELF_ONLY)) &&
+        !(spell->mag_flags & MAG_VIOLENT)) {
+      tch = ch;
+      target = TRUE;
+    }
+    if (!target) {
+      send_to_char(ch, "Upon %s should the spell be cast?\r\n",
+                (spell->targ_flags & (TAR_OBJ_ROOM | TAR_OBJ_INV | TAR_OBJ_WORLD | TAR_OBJ_EQUIP)) ? "what" : "who");
       return;
     }
- }
- if ((vict == ch) && !IS_SPELL_SELF(spell) && (!IS_SPELL_GROUP(spell)) ) {
-   send_to_char (ch, "You can't cast this spell upon yourself!\r\n");
-   return;
- }
- if ((vict != ch) && !IS_SPELL_VICT(spell) && !IS_SPELL_GRPVICT(spell) && !IS_SPELL_ROOM(spell)) {
-   send_to_char (ch, "You can't cast this spell on someone else!\r\n");
-   return;
- }
+  }
+
+  if (target && (tch == ch) && (spell->damages) && (spell->mag_flags & MAG_VIOLENT)) {
+    send_to_char(ch, "You shouldn't cast that on yourself -- could be bad for your health!\r\n");
+    return;
+  }
+  if (!target) {
+    send_to_char(ch, "Cannot find the target of your spell!\r\n");
+    return;
+  }
+  mana = mag_manacost(ch, spell->vnum);
+  if ((mana > 0) && (GET_MANA(ch) < mana) && (GET_LEVEL(ch) < LVL_IMMORT)) {
+    send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
+    return;
+  }
 
  if (spell->effectiveness)
    effectiveness = GET_SKILL(ch, spell->vnum) * 
@@ -799,21 +1036,32 @@ ACMD(do_cast)
 
  if (rand_number (0, 101) > effectiveness) {
    send_to_char (ch, "You lost your concentration!\r\n");
+   if (mana > 0)
+     GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - (mana / 2)));
+
+   // if you lost your concentration and the spell is MAG_VIOLENT, you still hit a mobile to start the fight.
+   if ((spell->mag_flags & MAG_VIOLENT) && tch && IS_NPC(tch))
+     hit(tch, ch, TYPE_UNDEFINED);
+
    return;
  }
 
  // check logical with above IS_SPELL_LEARNED, maybe it should return assign or 0 then?!?
+ /*
  if ((assign = find_spell_assign (ch, spell)) == -1) {
    send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
    return;
  }
+ */
+ if ((spell->type == SPELL) && (GET_LEVEL(ch) < LVL_IMMORT)) {
+   assign = find_spell_assign (ch, spell); 
 
- if (spell->type == SPELL) {
-   int mana = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->assign[assign].num_mana, &rts_code);
-    if ((mana > 0) && (GET_MANA(ch) < mana) && (GET_LEVEL(ch) < LVL_IMMORT)) {
-      send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
-      return;
-    }
+   mana = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->assign[assign].num_mana, &rts_code);
+     
+   if ((mana > 0) && (GET_MANA(ch) < mana)) {
+     send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
+     return;
+   }
  }
 
  if (spell->delay) {
@@ -822,28 +1070,11 @@ ACMD(do_cast)
    WAIT_STATE (ch, (delay > MAX_SPELL_DELAY) ? MAX_SPELL_DELAY : delay);
  }
 
-/*
- if (affected_by_spell (vict, spell->vnum) && (!IS_SPELL_ACCDUR(spell->flags)) &&
-                                                (!IS_SPELL_ACCAFF(spell->flags))) {
-   send_to_char (ch, "%s", NOEFFECT);
-   rts_code = TRUE;
+ if (cast_spell(ch, tch, tobj, spell->vnum)) {
+    WAIT_STATE(ch, PULSE_VIOLENCE);
+    if (mana > 0)
+      GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - mana));
  }
- else
-*/
-   for (i=0; i<6; i++) 
-     if (spell->applies[i].appl_num != -1) {
-       af.spell = spell->vnum;
-       af.duration = spell->applies[i].duration ? 
-                     formula_interpreter (ch, vict, spell->vnum, TRUE, spell->applies[i].duration, &rts_code) : 0;
-       af.modifier = spell->applies[i].modifier ?  formula_interpreter (ch, vict, spell->vnum, TRUE,
-                                                   spell->applies[i].modifier, &rts_code) : 0; 
-       af.bitvector[0] = spell->applies[i].appl_num < NUM_APPLIES ? 0 : 
-                      (1 << (spell->applies[i].appl_num - NUM_APPLIES));
-       af.location = spell->applies[i].appl_num < NUM_APPLIES ?  spell->applies[i].appl_num : APPLY_NONE;
-       affect_join (vict, &af, IS_SPELL_ACCDUR(spell) == 1, FALSE, IS_SPELL_ACCMOD(spell) == 1, FALSE); 
-       rts_code = TRUE; 
-     }
-
 
  if (spell->script)
    if (!perform_script (spell->script, ch, vict, ovict, spell->vnum, 0) && !rts_code)
