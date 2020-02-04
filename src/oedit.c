@@ -24,6 +24,7 @@
 #include "dg_olc.h"
 #include "fight.h"
 #include "modify.h"
+#include "spedit.h"
 
 /* local functions */
 static void oedit_setup_new(struct descriptor_data *d);
@@ -389,14 +390,17 @@ static void oedit_disp_weapon_menu(struct descriptor_data *d)
 /* Spell type. */
 static void oedit_disp_spells_menu(struct descriptor_data *d)
 {
+  struct str_spells *spell;
+
   int counter, columns = 0;
 
   get_char_colors(d->character);
   clear_screen(d);
 
-  for (counter = 1; counter <= NUM_SPELLS; counter++) {
-    write_to_output(d, "%s%2d%s) %s%-20.20s %s", grn, counter, nrm, yel,
-		spell_info[counter].name, !(++columns % 3) ? "\r\n" : "");
+  for (counter = 1; counter <= MAX_SKILLS; counter++) {
+    if ((spell = get_spell_by_vnum(counter)))
+      write_to_output(d, "%s%2d%s) %s%-20.20s %s", grn, counter, nrm, yel,
+                      spell->name, !(++columns % 3) ? "\r\n" : "");
   }
   write_to_output(d, "\r\n%sEnter spell choice (-1 for none) : ", nrm);
 }
@@ -974,11 +978,10 @@ void oedit_parse(struct descriptor_data *d, char *arg)
     switch (GET_OBJ_TYPE(OLC_OBJ(d))) {
     case ITEM_SCROLL:
     case ITEM_POTION:
-      if (number == 0 || number == -1)
+      if (number == 0 || number == -1 || !find_spell_by_vnum(number))
 	GET_OBJ_VAL(OLC_OBJ(d), 1) = -1;
-      else
-	GET_OBJ_VAL(OLC_OBJ(d), 1) = LIMIT(number, 1, NUM_SPELLS);
-
+      else 
+        GET_OBJ_VAL(OLC_OBJ(d), 1) = number;
       oedit_disp_val3_menu(d);
       break;
     case ITEM_CONTAINER:
@@ -1009,14 +1012,12 @@ void oedit_parse(struct descriptor_data *d, char *arg)
     switch (GET_OBJ_TYPE(OLC_OBJ(d))) {
     case ITEM_SCROLL:
     case ITEM_POTION:
-      if (number == 0 || number == -1) {
+      if (number == 0 || number == -1 || !find_spell_by_vnum(number)) 
 	GET_OBJ_VAL(OLC_OBJ(d), 2) = -1;
-	oedit_disp_val4_menu(d);
-	return;
-      }
-      min_val = 1;
-      max_val = NUM_SPELLS;
-      break;
+      else
+        GET_OBJ_VAL(OLC_OBJ(d), 2) = number;
+      oedit_disp_val4_menu(d);
+      return; 
     case ITEM_WEAPON:
       min_val = 1;
       max_val = MAX_WEAPON_SDICE;
@@ -1047,21 +1048,16 @@ void oedit_parse(struct descriptor_data *d, char *arg)
   case OEDIT_VALUE_4:
     number = atoi(arg);
     switch (GET_OBJ_TYPE(OLC_OBJ(d))) {
+    case ITEM_STAFF:
     case ITEM_SCROLL:
     case ITEM_POTION:
-      if (number == 0 || number == -1) {
+      if (number == 0 || number == -1 || !find_spell_by_vnum(number)) 
 	GET_OBJ_VAL(OLC_OBJ(d), 3) = -1;
-        oedit_disp_menu(d);
-	return;
-      }
-      min_val = 1;
-      max_val = NUM_SPELLS;
-      break;
+      else
+	GET_OBJ_VAL(OLC_OBJ(d), 3) = number;
+      oedit_disp_menu(d);
+      return;
     case ITEM_WAND:
-    case ITEM_STAFF:
-      min_val = 1;
-      max_val = NUM_SPELLS;
-      break;
     case ITEM_WEAPON:
       min_val = 0;
       max_val = NUM_ATTACK_TYPES - 1;

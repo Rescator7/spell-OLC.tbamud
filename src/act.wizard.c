@@ -34,8 +34,7 @@
 #include "quest.h"
 #include "ban.h"
 #include "screen.h"
-
-extern char *get_spell_name(int serial);
+#include "spedit.h"
 
 /* local utility functions with file scope */
 static int perform_set(struct char_data *ch, struct char_data *vict, int mode, char *val_arg);
@@ -675,15 +674,15 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j)
       send_to_char(ch, "Hours left: [%d]\r\n", GET_OBJ_VAL(j, 2));
     break;
   case ITEM_SCROLL:
-  case ITEM_POTION:
+  case ITEM_POTION: 
     send_to_char(ch, "Spells: (Level %d) %s, %s, %s\r\n", GET_OBJ_VAL(j, 0),
-	    skill_name(GET_OBJ_VAL(j, 1)), skill_name(GET_OBJ_VAL(j, 2)),
-	    skill_name(GET_OBJ_VAL(j, 3)));
+	    get_spell_name(GET_OBJ_VAL(j, 1)), get_spell_name(GET_OBJ_VAL(j, 2)),
+	    get_spell_name(GET_OBJ_VAL(j, 3)));
     break;
   case ITEM_WAND:
   case ITEM_STAFF:
     send_to_char(ch, "Spell: %s at level %d, %d (of %d) charges remaining\r\n",
-	    skill_name(GET_OBJ_VAL(j, 3)), GET_OBJ_VAL(j, 0),
+	    get_spell_name(GET_OBJ_VAL(j, 3)), GET_OBJ_VAL(j, 0),
 	    GET_OBJ_VAL(j, 2), GET_OBJ_VAL(j, 1));
     break;
   case ITEM_WEAPON:

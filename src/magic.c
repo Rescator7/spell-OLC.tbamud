@@ -330,7 +330,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
 {
   struct affected_type af[MAX_SPELL_AFFECTS];
   bool accum_affect = FALSE, accum_duration = FALSE;
-  const char *to_vict = NULL, *to_room = NULL;
   int i, j, rts_code, affect;
   struct str_spells *spell;
 
@@ -637,13 +636,13 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
         (af[i].location != APPLY_NONE)) {
       affect_join(victim, &af[i], accum_duration, FALSE, accum_affect, FALSE);
     }
-// bobo this is going to be done by spell->script
-/*
-  if (to_vict != NULL)
-    act(to_vict, FALSE, victim, 0, ch, TO_CHAR);
-  if (to_room != NULL)
-    act(to_room, TRUE, victim, 0, ch, TO_ROOM);
-*/
+  
+  if ((ch != victim) && (spell->messages.to_self != NULL))
+    act(spell->messages.to_self, FALSE, ch, 0, ch, TO_CHAR);
+  if (spell->messages.to_vict != NULL)
+    act(spell->messages.to_vict, FALSE, victim, 0, ch, TO_CHAR);
+  if (spell->messages.to_room != NULL)
+    act(spell->messages.to_room, TRUE, victim, 0, ch, TO_ROOM);
 }
 
 /* This function is used to provide services to mag_groups.  This function is
@@ -1045,12 +1044,41 @@ void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
 void mag_creations(int level, struct char_data *ch, int spellnum)
 {
   struct obj_data *tobj;
+  struct str_spells *spell;
   obj_vnum z;
+  int i, rts_code;
 
   if (ch == NULL)
     return;
   /* level = MAX(MIN(level, LVL_IMPL), 1); - Hm, not used. */
 
+  spell = get_spell_by_vnum(spellnum);
+
+  if (!spell) {
+    log("SYSERR: spell_creations, spell %d not found", spellnum);
+    return; 
+  }
+
+  for (i=0; i<MAX_SPELL_OBJECTS; i++) {
+    if (spell->objects[i]) {
+      z = formula_interpreter (ch, ch, spellnum, TRUE, spell->objects[i], &rts_code);
+
+      if (!rts_code) {
+        if (!(tobj = read_object(z, VIRTUAL))) {
+          send_to_char(ch, "I seem to have goofed.\r\n");
+          log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum, z);
+        } else {
+            obj_to_char(tobj, ch);
+            act("$n creates $p.", FALSE, ch, tobj, 0, TO_ROOM);
+            act("You create $p.", FALSE, ch, tobj, 0, TO_CHAR);
+            load_otrigger(tobj);
+          }
+      }  else
+           log("SYSERR: spell_creations, formula interpreter failed on spell %d", spellnum);
+    }
+  }
+
+/*
   switch (spellnum) {
   case SPELL_CREATE_FOOD:
     z = 10;
@@ -1070,6 +1098,7 @@ void mag_creations(int level, struct char_data *ch, int spellnum)
   act("$n creates $p.", FALSE, ch, tobj, 0, TO_ROOM);
   act("You create $p.", FALSE, ch, tobj, 0, TO_CHAR);
   load_otrigger(tobj);
+*/
 }
 
 void mag_rooms(int level, struct char_data *ch, int spellnum)

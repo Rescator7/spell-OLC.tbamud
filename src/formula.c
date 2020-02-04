@@ -407,7 +407,7 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
         if (strchr (priority_check[mode], CHAR_CODE(ptr->command))) {
           ptr = formula_do_oper (head_formula, ptr, spell_vnum, ch, rts_code);
           if (*rts_code) {
-//            send_formula_error (ch, *rts_code, spell_vnum, syserr);
+            send_formula_error (ch, *rts_code, spell_vnum, syserr);
             free_formula(head_formula);
             return 0; 
           }

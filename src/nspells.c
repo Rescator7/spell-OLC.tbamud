@@ -825,15 +825,11 @@ void assign_spells (void)
        Q->applies[1].duration = strdup(default_spells[i].sapply_duration);
    }
 
-   buf[0] = '\x0';
    if (default_spells[i].to_vict)
-    len = snprintf(buf, sizeof(buf), "SAY_TO_VICT {\"%s\"};\r\n", default_spells[i].to_vict);
+    Q->messages.to_vict = strdup(default_spells[i].to_vict);
 
    if (default_spells[i].to_room)
-     snprintf(buf + len, sizeof(buf) - len, "SAY_TO_ROOM {\"%s\"};\r\n", default_spells[i].to_room);
-
-   if (*buf)
-     Q->script = strdup(buf);
+     Q->messages.to_room = strdup(default_spells[i].to_room);
 
    if (i++ == NUM_SPELLS)
      VNUM = MAX_SPELLS - NUM_SPELLS;
