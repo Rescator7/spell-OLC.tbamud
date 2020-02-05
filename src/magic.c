@@ -925,18 +925,25 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
 void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
 		        int spellnum, int type)
 {
-  int spell = 0, msg_not_affected = TRUE;
-  const char *to_vict = NULL, *to_room = NULL;
+  int i, dispel = 0, effect = 0, rts_code;
+  struct str_spells *spell;
 
   if (victim == NULL)
     return;
 
+  spell = get_spell_by_vnum(spellnum);
+  if (!spell) {
+    log("SYSERR: unknown spellnum %d passed to mag_unaffects.", spellnum);
+    return;
+  } 
+
+/* bobo
   switch (spellnum) {
   case SPELL_HEAL:
-    /* Heal also restores health, so don't give the "no effect" message if the
-     * target isn't afflicted by the 'blindness' spell. */
+    // Heal also restores health, so don't give the "no effect" message if the
+    // target isn't afflicted by the 'blindness' spell. 
     msg_not_affected = FALSE;
-    /* fall-through */
+    // fall-through 
   case SPELL_CURE_BLIND:
     spell = SPELL_BLINDNESS;
     to_vict = "Your vision returns!";
@@ -954,24 +961,36 @@ void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
   default:
     spell = spellnum;
     break;
-/*
-  default:
-    log("SYSERR: unknown spellnum %d passed to mag_unaffects.", spellnum);
-    return;
-*/
+//  default:
+//    log("SYSERR: unknown spellnum %d passed to mag_unaffects.", spellnum);
+//    return;
+  }
+*/ 
+
+  for (i=0; i<MAX_SPELL_DISPEL; i++) {
+    if (spell->dispel[i]) 
+      dispel = formula_interpreter (ch, victim, spellnum, TRUE, spell->dispel[i], &rts_code);
+    else
+      continue;
+
+    if (affected_by_spell(victim, dispel)) { 
+      effect++;
+      affect_from_char(victim, dispel);
+    }
   }
 
-  if (!affected_by_spell(victim, spell)) {
-    if (msg_not_affected)
-      send_to_char(ch, "%s", CONFIG_NOEFFECT);
-    return;
-  }
+  if (!effect && (spellnum != SPELL_HEAL))
+    send_to_char(ch, "%s", CONFIG_NOEFFECT);
+  else {
+    if (spell->messages.to_self != NULL)
+      act(spell->messages.to_self, FALSE, ch, 0, ch, TO_CHAR);
 
-  affect_from_char(victim, spell);
-  if (to_vict != NULL)
-    act(to_vict, FALSE, victim, 0, ch, TO_CHAR);
-  if (to_room != NULL)
-    act(to_room, TRUE, victim, 0, ch, TO_ROOM);
+    if (spell->messages.to_vict != NULL)
+      act(spell->messages.to_vict, FALSE, victim, 0, ch, TO_CHAR);
+
+    if (spell->messages.to_room != NULL)
+      act(spell->messages.to_room, TRUE, victim, 0, ch, TO_ROOM);
+  }
 }
 
 void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,

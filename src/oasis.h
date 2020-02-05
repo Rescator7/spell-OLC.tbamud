@@ -429,6 +429,8 @@ extern const char *nrm, *grn, *cyn, *yel, *YEL, *bln, *red;
 #define SPEDIT_GET_MSG_TO_ROOM          31
 #define SPEDIT_SHOW_OBJECTS             32
 #define SPEDIT_GET_OBJECT               33
+#define SPEDIT_SHOW_DISPEL              34
+#define SPEDIT_GET_DISPEL               35
 
 int  save_config( IDXTYPE nowhere );
 

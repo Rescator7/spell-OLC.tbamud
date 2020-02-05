@@ -13,6 +13,7 @@
 #include "modify.h"
 #include "db.h"
 #include "config.h"
+#include "fight.h"
 
 extern struct str_spells *get_spell_by_vnum (int vnum);
 extern struct str_spells *get_spell_by_name (char *name, char type);
@@ -158,7 +159,6 @@ void assign_spells (void)
 
  int i = 0;
  int VNUM = 0;
- int len = 0;
  char buf[MAX_STRING_LENGTH];
  struct str_spells *Q;
  struct str_spell_assign {
@@ -309,9 +309,9 @@ void assign_spells (void)
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "Your vision returns!",
                                          NULL,
-                                         NULL,
-	                                 NULL},
+	                                 "There's a momentary gleam in $n's eyes."},
 {"cure critic",    NULL                , SPELL, 30, 10, 2, POS_FIGHTING, TAR_CHAR_ROOM, MAG_POINTS,
                                          CLASS_CLERIC, 9,
                                          CLASS_UNDEFINED, 0,
@@ -504,7 +504,7 @@ void assign_spells (void)
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
-                                         NULL,
+                                         "You don't feel so unlucky.",
                                          NULL,
 	                                 NULL},
 {"sanctuary",      NULL                , SPELL, 110, 85, 5, POS_STANDING, TAR_CHAR_ROOM, MAG_AFFECTS | MAG_ACCDUR,
@@ -575,9 +575,9 @@ void assign_spells (void)
                                          APPLY_NONE, NULL, NULL,
                                          APPLY_NONE, NULL, NULL,
                                          NULL,
+                                         "A warm feeling runs through your body!",
                                          NULL,
-                                         NULL,
-	                                 NULL},
+	                                 "$n looks better."},
 {"sense life",     NULL                , SPELL, 20, 10, 2, POS_STANDING, TAR_CHAR_ROOM | TAR_SELF_ONLY, MAG_AFFECTS | MAG_ACCDUR,
                                          CLASS_CLERIC, 18,
                                          CLASS_UNDEFINED, 0,
@@ -795,20 +795,23 @@ void assign_spells (void)
      Q->damages = strdup(default_spells[i].damages);
      Q->max_dam = 50;
    }
+
    snprintf(buf, sizeof(buf), "(%d - (%d * self.level)) > %d ? (%d - (%d * self.level)) : %d",
-                              default_spells[i].manamax, default_spells[i].manachng, 
-                              default_spells[i].manamin,
-                              default_spells[i].manamax, default_spells[i].manachng, 
-                              default_spells[i].manamin);
+                               default_spells[i].manamax, default_spells[i].manachng, 
+                               default_spells[i].manamin,
+                               default_spells[i].manamax, default_spells[i].manachng, 
+                               default_spells[i].manamin);
    if (default_spells[i].FirstClass != CLASS_UNDEFINED) {
      Q->assign[0].class_num = default_spells[i].FirstClass;
      Q->assign[0].level = default_spells[i].FirstLevel;
-     Q->assign[0].num_mana = strdup(buf);
+     if (default_spells[i].type == SPELL)
+       Q->assign[0].num_mana = strdup(buf);
    }
    if (default_spells[i].SecondClass != CLASS_UNDEFINED) {
      Q->assign[1].class_num = default_spells[i].SecondClass;
      Q->assign[1].level = default_spells[i].SecondLevel;
-     Q->assign[1].num_mana = strdup(buf);
+     if (default_spells[i].type == SPELL)
+       Q->assign[1].num_mana = strdup(buf);
    }
    if (default_spells[i].fapply_num != APPLY_NONE) {
      Q->applies[0].appl_num = default_spells[i].fapply_num;
@@ -870,7 +873,6 @@ ACMD(do_cast)
  struct char_data *vict = NULL;
  struct obj_data *ovict = NULL;
  struct str_spells *spell = NULL;
- struct affected_type af;
  int i, delay, rts_code = TRUE;
  int effectiveness = 0;
  int number;

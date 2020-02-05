@@ -13,9 +13,8 @@
 #include "spedit.h"
 
 #define EMPTY_STR(str) ((str) ? (str) : "<empty>")
-#define NULL_STR(str)  ((str) ? (strdup(str)) : NULL)
-
-// There is DISPOSE(), but i don't needs the SYSERR:, and I don't NULL it either.
+#define NULL_STR(str) ((str) ? (str) : "")
+#define STRDUP(str)  ((str) ? (strdup(str)) : NULL)
 #define SAFE_FREE(str) if(str) free(str)
 
 void cleanup_olc (struct descriptor_data *d, byte cleanup_type);
@@ -80,7 +79,7 @@ int is_prot_set(struct str_spells *spell)
 {
  int i;
 
- for (i=0; i<NUM_CLASSES; i++) 
+ for (i=0; i<MAX_SPELL_PROTECTIONS; i++) 
    if (spell->protfrom[i].prot_num != -1)
      return 1;
  return 0;
@@ -90,7 +89,7 @@ int is_apply_set(struct str_spells *spell)
 {
  int i;
 
- for (i=0; i<NUM_CLASSES; i++) 
+ for (i=0; i<MAX_SPELL_AFFECTS; i++) 
    if (spell->applies[i].appl_num != -1)
      return 1;
  return 0;
@@ -112,6 +111,12 @@ int is_objects_set(struct str_spells *spell)
 
 int is_dispel_set(struct str_spells *spell)
 {
+  int i;
+
+  for (i=0; i<MAX_SPELL_DISPEL; i++)
+    if (spell->dispel[i])
+      return 1;
+  return 0;
 }
 
 int is_points_set(struct str_spells *spell)
@@ -451,6 +456,9 @@ void spedit_show_warnings (struct descriptor_data *d) {
   if (is_objects_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_CREATIONS))
     strcat(buf, "Magic flags: MAG_CREATIONS is required because create objects is set.\r\n");
 
+  if (is_dispel_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
+    strcat(buf, "Magic flags: MAG_UNAFFECTS is required because dispell is set.\r\n");
+  
   if (*buf)
     send_to_char (d->character, "\r\n%s", buf);
 }
@@ -485,6 +493,21 @@ void spedit_show_objects(struct descriptor_data *d) {
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_OBJECTS;
+}
+
+void spedit_show_dispel(struct descriptor_data *d) {
+  char buf[2048];
+
+  sprintf (buf, "\r\n1) Spell : %s\r\n"
+                "2) Spell : %s\r\n"
+                "3) Spell : %s\r\n"
+                "\r\nEnter choice (0 to quit) : ",
+                EMPTY_STR(OLC_SPELL(d)->dispel[0]),
+                EMPTY_STR(OLC_SPELL(d)->dispel[1]),
+                EMPTY_STR(OLC_SPELL(d)->dispel[2]));
+
+  send_to_char (d->character, "%s", buf);
+  OLC_MODE(d) = SPEDIT_SHOW_DISPEL;
 }
 
 void spedit_main_menu (struct descriptor_data *d) {
@@ -584,6 +607,9 @@ void spedit_empty_spell (struct str_spells *spell) {
   for (i=0; i<MAX_SPELL_OBJECTS; i++)
     SAFE_FREE(spell->objects[i]);
 
+  for (i=0; i<MAX_SPELL_DISPEL; i++)
+    SAFE_FREE(spell->dispel[i]);
+
   for (i=0; i<NUM_CLASSES; i++) {
     SAFE_FREE(spell->assign[i].num_prac);
     SAFE_FREE(spell->assign[i].num_mana);
@@ -617,41 +643,44 @@ void spedit_copyover_spell (struct str_spells *from, struct str_spells *to)
 
   to->status = from->status;
   to->type = from->type;
-  to->name = NULL_STR(from->name);
+  to->name = STRDUP(from->name);
   to->targ_flags = from->targ_flags;
   to->mag_flags = from->mag_flags;
   to->min_pos = from->min_pos;
   to->max_dam = from->max_dam;
-  to->effectiveness = NULL_STR(from->effectiveness);
-  to->damages = NULL_STR(from->damages);
-  to->delay = NULL_STR(from->delay);
-  to->script = NULL_STR(from->script);
+  to->effectiveness = STRDUP(from->effectiveness);
+  to->damages = STRDUP(from->damages);
+  to->delay = STRDUP(from->delay);
+  to->script = STRDUP(from->script);
 
-  to->messages.wear_off = NULL_STR(from->messages.wear_off);
-  to->messages.to_self = NULL_STR(from->messages.to_self);
-  to->messages.to_vict = NULL_STR(from->messages.to_vict);
-  to->messages.to_room = NULL_STR(from->messages.to_room);
+  to->messages.wear_off = STRDUP(from->messages.wear_off);
+  to->messages.to_self = STRDUP(from->messages.to_self);
+  to->messages.to_vict = STRDUP(from->messages.to_vict);
+  to->messages.to_room = STRDUP(from->messages.to_room);
 
   for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
     to->protfrom[i].prot_num = from->protfrom[i].prot_num;
-    to->protfrom[i].duration = NULL_STR(from->protfrom[i].duration);
-    to->protfrom[i].resist = NULL_STR(from->protfrom[i].resist);
+    to->protfrom[i].duration = STRDUP(from->protfrom[i].duration);
+    to->protfrom[i].resist = STRDUP(from->protfrom[i].resist);
   }
 
   for (i=0; i<MAX_SPELL_AFFECTS; i++) {
     to->applies[i].appl_num = from->applies[i].appl_num;
-    to->applies[i].modifier = NULL_STR(from->applies[i].modifier);
-    to->applies[i].duration = NULL_STR(from->applies[i].duration);
+    to->applies[i].modifier = STRDUP(from->applies[i].modifier);
+    to->applies[i].duration = STRDUP(from->applies[i].duration);
   }
  
   for (i=0; i<MAX_SPELL_OBJECTS; i++)
-    to->objects[i] = NULL_STR(from->objects[i]);
+    to->objects[i] = STRDUP(from->objects[i]);
+
+  for (i=0; i<MAX_SPELL_DISPEL; i++)
+    to->dispel[i] = STRDUP(from->dispel[i]);
 
   for (i=0; i<NUM_CLASSES; i++) {
     to->assign[i].class_num = from->assign[i].class_num;
     to->assign[i].level = from->assign[i].level;
-    to->assign[i].num_prac = NULL_STR(from->assign[i].num_prac);
-    to->assign[i].num_mana = NULL_STR(from->assign[i].num_mana);
+    to->assign[i].num_prac = STRDUP(from->assign[i].num_prac);
+    to->assign[i].num_mana = STRDUP(from->assign[i].num_mana);
   }
   to->function = from->function;
 }
@@ -688,7 +717,7 @@ void spedit_init_new_spell (struct str_spells *spell)
  spell->next     = NULL;
  spell->status   = unavailable;
  spell->type     = 'P';
- spell->name     = strdup ("Undefined");
+ spell->name     = NULL;
  spell->targ_flags = 0;
  spell->mag_flags = 0;
  spell->min_pos  = 0;
@@ -718,6 +747,9 @@ void spedit_init_new_spell (struct str_spells *spell)
 
  for (i=0; i<MAX_SPELL_OBJECTS; i++)
    spell->objects[i] = NULL;
+
+ for (i=0; i<MAX_SPELL_DISPEL; i++)
+   spell->dispel[i] = NULL;
 
  for (i=0; i<NUM_CLASSES; i++) {
    spell->assign[i].class_num  = -1;
@@ -761,8 +793,10 @@ int spedit_create_spell (struct descriptor_data *d)
 
  if (q) 
    spedit_copyover_spell(q, OLC_SPELL(d));
- else
+ else {
    spedit_init_new_spell(OLC_SPELL(d));
+   OLC_SPELL(d)->name = strdup("Undefined");
+ }
 
  return 1;
 }
@@ -773,8 +807,7 @@ void boot_spells (void)
  char buf1[MAX_STRING_LENGTH + 1] = "";
 
  FILE *fp;
- int  fct, d1, err = 0, save = 0;
- int  ret;
+ int  x, ret, fct, d1, err = 0, save = 0;
  struct str_spells *Q = NULL;
 
  if ((fp=fopen(SPELL_FILE, "r")) == NULL) {
@@ -784,133 +817,162 @@ void boot_spells (void)
 
  while (!feof(fp)) {
     ret = fscanf (fp, "%d ", &fct);
-    if (!save && (fct != 1)) {
+    if (!save && (fct != DB_CODE_INIT_VARS)) {
       mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: attemp to assign value to Q == (null)");
       abort();
     }
     switch (fct) {
-      case 1 : if (save == 1) 
+      case DB_CODE_INIT_VARS : 
+               if (save == 1) 
                  spedit_save_internally (Q); 
                else  
                  save = 1;
                CREATE (Q, struct str_spells, 1);
                spedit_init_new_spell (Q);
                ret = fscanf (fp, "%c %d %d %d %d %d %d\n", &Q->type, &Q->vnum, &Q->status,
-                             &Q->targ_flags, &Q->mag_flags, &Q->min_pos, &Q->max_dam);
+                                 &Q->targ_flags, &Q->mag_flags, &Q->min_pos, &Q->max_dam);
                if (Q->vnum > MAX_SKILLS) {
                  mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: spell vnum > MAX_SKILLS");
                  abort();
                }
                break;
-      case 2 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_NAME : 
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0'; 
                  Q->name = strdup (buf);
                }
                break;
-      case 4 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_DAMAGES : 
+              if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0'; 
                  Q->damages = strdup (buf);
                }
                break;
-      case 5 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_MSG_WEAR_OFF : 
+              if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0';
                  Q->messages.wear_off = strdup (buf);
                }
                break;
-      case 6 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_MSG_TO_SELF : 
+              if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0';
                  Q->messages.to_self = strdup (buf);
-                 log("yes");
                }
                break;
-      case 7 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_MSG_TO_VICT : 
+              if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0';
                  Q->messages.to_vict = strdup (buf);
                }
                break;
-      case 8 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_MSG_TO_ROOM : 
+              if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0';
                  Q->messages.to_room = strdup (buf);
                }
                break;
-      case 14 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_DISPEL_1 : 
+      case DB_CODE_DISPEL_2 : 
+      case DB_CODE_DISPEL_3 : 
+               x = fct - DB_CODE_DISPEL_1;
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                 buf[strlen(buf)-1] = '\0';
+                 Q->dispel[x] = strdup(buf);
+               }
+               break;
+      case DB_CODE_OBJECTS_1 : 
+      case DB_CODE_OBJECTS_2 : 
+      case DB_CODE_OBJECTS_3 : 
+               x = fct - DB_CODE_OBJECTS_1;
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                   buf[strlen(buf)-1] = '\0';
-                  Q->objects[0] = strdup (buf);
+                  Q->objects[x] = strdup (buf);
                 }
                 break;
-      case 15 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
-                  buf[strlen(buf)-1] = '\0';
-                  Q->objects[1] = strdup (buf);
+      case DB_CODE_PROT_1 :
+      case DB_CODE_PROT_2 :
+      case DB_CODE_PROT_3 :
+      case DB_CODE_PROT_4 :
+      case DB_CODE_PROT_5 :
+      case DB_CODE_PROT_6 :
+               x = fct - DB_CODE_PROT_1;
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  ret = sscanf (buf, "%d %[^\n]", &Q->protfrom [x].prot_num, buf1);
+                  if (ret == 2) Q->protfrom [x].duration = strdup(buf1);
+               }
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                 ret = sscanf (buf, "%d %[^\n]", &d1, buf1);
+                 if (d1 != DB_CODE_MARKER)
+                   log("SYSERR: boot spells: Invalid marker in DB_CODE_PROT_%d", x + 1); 
+                 if (ret == 2) Q->protfrom [x].resist = strdup(buf1); 
+               } 
+               break;
+      case DB_CODE_AFFECTS_1 :
+      case DB_CODE_AFFECTS_2 :
+      case DB_CODE_AFFECTS_3 :
+      case DB_CODE_AFFECTS_4 :
+      case DB_CODE_AFFECTS_5 :
+      case DB_CODE_AFFECTS_6 :
+                x = fct - DB_CODE_AFFECTS_1;
+                if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  ret = sscanf (buf, "%d %[^\n]", &Q->applies[x].appl_num, buf1);
+                  if (ret == 2) Q->applies[x].modifier = strdup(buf1);
+                }
+                if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  ret = sscanf (buf, "%d %[^\n]", &d1, buf1);
+                  if (d1 != DB_CODE_MARKER)
+                    log("SYSERR: boot spells: Invalid marker in DB_CODE_AFFECTS_%d", x + 1); 
+                  if (ret == 2) Q->applies[x].duration = strdup (buf1);
+                } 
+                break;
+      case DB_CODE_CLASS_MU :
+      case DB_CODE_CLASS_CL :
+      case DB_CODE_CLASS_TH :
+      case DB_CODE_CLASS_WA :
+                x = fct - DB_CODE_CLASS_MU;
+                if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  ret = sscanf (buf, "%d %d %[^\n]", &Q->assign [x].class_num, &Q->assign [x].level, buf1);
+                  if (ret == 3) Q->assign [x].num_prac = strdup (buf1);
+                  if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                    ret = sscanf (buf, "%d %[^\n]", &d1, buf1);
+                    if (d1 != DB_CODE_MARKER)
+                      log("SYSERR: boot spells: Invalid marker in DB_CODE_CLASS: %d", x + 1); 
+                    if (ret == 2) Q->assign[x].num_mana = strdup (buf1);
+                  }
                 }
                 break;
-      case 16 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
-                  buf[strlen(buf)-1] = '\0';
-                  Q->objects[2] = strdup (buf);
-                }
-                break;
-      case 35 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_EFFECTIVENESS : 
+                if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                   buf[strlen(buf)-1] = '\0'; 
                   Q->effectiveness = strdup (buf);
                 }
                 break; 
-      case 36 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_DELAY : 
+                if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                   buf[strlen(buf)-1] = '\0'; 
                   Q->delay = strdup (buf);
                 }
                 break;
-      case 37 : if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+      case DB_CODE_SCRIPT : 
+                if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                   if (!Q->script)
                     Q->script = strdup (buf); 
                   else {
-                    sprintf (buf1, "%s%s", Q->script, buf); 
+                    snprintf (buf1, sizeof(buf1), "%s%s", Q->script, buf); 
+                    if (strlen(buf1) == sizeof(buf1)) 
+                      log("SYSERR: boot spells: spell script buffer overflow"); 
                     free (Q->script);
                     Q->script = strdup (buf1);
                   } 
                 }   
                 break;
-      case 99 : break;    
-      default : if ((fct > 16) && (fct < 23)) {
-                  if (!fgets (buf, MAX_STRING_LENGTH, fp)) {
-                    mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: protection from read error!");
-                  }
-                  sscanf (buf, "%d %s\r\n", &Q->protfrom [fct - 17].prot_num, buf1);
-                  if (*buf1) Q->protfrom [fct - 17].duration = strdup(buf1);
-                  if (!fgets (buf, MAX_STRING_LENGTH, fp)) {
-                    mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: protection from read error!");
-                  }
-                  sscanf (buf, "%d %s\r\n", &d1, buf1);
-                  if (*buf1) Q->protfrom [fct - 17].resist = strdup(buf1); 
+      case DB_CODE_END : break;    
+      default : if (err++ > 9) {
+                  log ("SYSERR: BOOT SPELLS: program abort too much errors.");
+                  abort();
                 } else
-                if ((fct > 22) && (fct < 29)) {
-                  ret = fscanf (fp, "%d ", &Q->applies[fct - 23].appl_num);
-                  if (fgets (buf, MAX_STRING_LENGTH, fp)) {
-                    buf[strlen(buf)-1] = '\0'; 
-                    Q->applies[fct - 23].modifier = strdup (buf);
-                  } 
-                  ret = fscanf (fp, "%d ", &d1);
-                  if (fgets (buf, MAX_STRING_LENGTH, fp)) {
-                    buf[strlen(buf)-1] = '\0';
-                    Q->applies[fct - 23].duration = strdup (buf);
-                  } 
-                } else
-                if ((fct > 28) && (fct < 33)) {
-                  if (!fgets (buf, MAX_STRING_LENGTH, fp)) {
-                    mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: assign read error!");
-                  }
-                  sscanf (buf, "%d %d %s\r\n", &Q->assign [fct - 29].class_num,
-                               &Q->assign [fct - 29].level, buf1);
-                  if (*buf1) Q->assign [fct - 29].num_prac = strdup (buf1);
-                  ret = fscanf (fp, "%d ", &d1);
-                  if (fgets (buf, MAX_STRING_LENGTH, fp)) {
-                    buf[strlen(buf)-1] = '\0'; 
-                    Q->assign [fct - 29].num_mana = strdup (buf);
-                  }
-                } else 
-                    if (err++ > 9) {
-                      mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: program abort too much errors.");
-                      abort();
-                    } else
-                       mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: invalide code in database.");
+                    log ("SYSERR: BOOT SPELLS: invalide code in database.");
     } 
  }
 
@@ -922,12 +984,12 @@ void boot_spells (void)
 
 void spedit_save_to_disk (void)
 {
- char buf[2048];  // fix me: unsafe
- char buf1[2048];
+ char buf[2048] = "";  
+ char buf1[2048] = "";
+ char outbuf[MAX_STRING_LENGTH] = "";
 
  FILE *fp;
  struct str_spells *r;
- int i;
  char *p;
 
  sprintf (buf, "cp %s %s.bak", SPELL_FILE, SPELL_FILE);
@@ -939,79 +1001,192 @@ void spedit_save_to_disk (void)
    mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: SPEDIT: Can't save spells to the database.");
    return;
  }
+
+ setbuf(fp, outbuf);
+
  for (r = list_spells; r; r = r->next) {
-   sprintf (buf, "01 %c %d %d %d %d %d %d\n",
-                  r->type, r->vnum, r->status, r->targ_flags, r->mag_flags, r->min_pos, r->max_dam);
-   if (r->name)
-     sprintf (buf, "%s02 %s\n", buf, r->name);
-
-   /* code 03 is FREE */
-
-   if (r->damages)
-     sprintf (buf, "%s04 %s\n", buf, r->damages);
-
-   /* 5 6 7 8 */
-   if (r->messages.wear_off)
-     sprintf (buf, "%s05 %s\n", buf, r->messages.wear_off);
-
-   if (r->messages.to_self)
-     sprintf (buf, "%s06 %s\n", buf, r->messages.to_self);
-
-   if (r->messages.to_vict)
-     sprintf (buf, "%s07 %s\n", buf, r->messages.to_vict);
-
-   if (r->messages.to_room)
-     sprintf (buf, "%s08 %s\n", buf, r->messages.to_room);
-
-   /* 9 10 11 12 13 Are FREE */ 
-
-   /* 14 15 16 = spell->objects[] */
-   if (r->objects[0])
-     sprintf (buf, "%s14 %s\n", buf, r->objects[0]);
-
-   if (r->objects[1])
-     sprintf (buf, "%s15 %s\n", buf, r->objects[1]);
-
-   if (r->objects[2])
-     sprintf (buf, "%s16 %s\n", buf, r->objects[2]);
-
-   /* 17 18 19 20 21 22 */
-   for (i=0; i<MAX_SPELL_PROTECTIONS; i++)
-     if (r->protfrom[i].prot_num != -1) 
-       sprintf (buf, "%s%d %d %s\n00 %s\n", buf, i + 17,
-                r->protfrom[i].prot_num, r->protfrom[i].duration, r->protfrom[i].resist);
-   /* 23 24 25 26 27 28 */
-   for (i=0; i<MAX_SPELL_AFFECTS; i++)
-     if (r->applies[i].appl_num != -1)
-       sprintf (buf, "%s%d %d %s\n00 %s\n", 
-                buf, i + 23, r->applies[i].appl_num, 
-                r->applies[i].modifier, r->applies[i].duration);
-   /* 29 30 31 32  */
-   for (i=0; i<NUM_CLASSES; i++)
-     if (r->assign[i].class_num != -1)
-       sprintf (buf, "%s%d %d %d %s\n00 %s\n", 
-                buf, i + 29, r->assign[i].class_num,
-                r->assign[i].level, r->assign[i].num_prac,
-                r->assign[i].num_mana);
-   /* 33 34 are free */
-
-   /* 35 */
-   if (r->effectiveness)
-     sprintf (buf, "%s35 %s\n", buf, r->effectiveness);
-   /* 36 */
-   if (r->delay)
-     sprintf (buf, "%s36 %s\n", buf, r->delay);
-   /* 37 */
-   if (r->script) {
-     strcpy (buf1, r->script); 
-     p = strtok (buf1, "\n");
-     sprintf (buf, "%s37 %s\n", buf, p);
-     while ((p=strtok('\0', "\n"))) 
-       sprintf (buf, "%s37 %s\n", buf, p);
+   snprintf (buf, sizeof(buf), "%2d %c %d %d %d %d %d %d\n", DB_CODE_INIT_VARS,
+                                r->type, r->vnum, r->status, r->targ_flags, r->mag_flags, r->min_pos, r->max_dam);
+   fprintf(fp, "%s", buf);
+ 
+   if (r->name) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_NAME, r->name);
+     fprintf(fp, "%s", buf);
    }
-   fprintf (fp, "%s", buf);
+
+   if (r->damages) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DAMAGES, r->damages);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->messages.wear_off) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_WEAR_OFF, r->messages.wear_off);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->messages.to_self) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_TO_SELF, r->messages.to_self);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->messages.to_vict) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_TO_VICT, r->messages.to_vict);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->messages.to_room) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_TO_ROOM, r->messages.to_room);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->dispel[0]) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DISPEL_1, r->dispel[0]);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->dispel[1]) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DISPEL_2, r->dispel[1]);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->dispel[2]) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DISPEL_3, r->dispel[2]);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->objects[0]) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_OBJECTS_1, r->objects[0]);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->objects[1]) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_OBJECTS_2, r->objects[1]);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->objects[2]) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_OBJECTS_3, r->objects[2]);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->protfrom[0].prot_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_1, 
+                                  r->protfrom[0].prot_num, r->protfrom[0].duration, DB_CODE_MARKER, r->protfrom[0].resist);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->protfrom[1].prot_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_2, 
+                                  r->protfrom[1].prot_num, r->protfrom[1].duration, DB_CODE_MARKER, r->protfrom[1].resist);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->protfrom[2].prot_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_3,
+                                  r->protfrom[2].prot_num, r->protfrom[2].duration, DB_CODE_MARKER, r->protfrom[2].resist);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->protfrom[3].prot_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_4, 
+                                  r->protfrom[3].prot_num, r->protfrom[3].duration, DB_CODE_MARKER, r->protfrom[3].resist);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->protfrom[4].prot_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_5, 
+                                  r->protfrom[4].prot_num, r->protfrom[4].duration, DB_CODE_MARKER, r->protfrom[4].resist);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->protfrom[5].prot_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_6, 
+                                  r->protfrom[5].prot_num, r->protfrom[5].duration, DB_CODE_MARKER, r->protfrom[5].resist);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->applies[0].appl_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_1, 
+                                  r->applies[0].appl_num, NULL_STR(r->applies[0].modifier), DB_CODE_MARKER, r->applies[0].duration);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->applies[1].appl_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_2, 
+                                  r->applies[1].appl_num, NULL_STR(r->applies[1].modifier), DB_CODE_MARKER, r->applies[1].duration);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->applies[2].appl_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_3, 
+                                  r->applies[2].appl_num, NULL_STR(r->applies[2].modifier), DB_CODE_MARKER, r->applies[2].duration);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->applies[3].appl_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_4, 
+                                  r->applies[3].appl_num, NULL_STR(r->applies[3].modifier), DB_CODE_MARKER, r->applies[3].duration);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->applies[4].appl_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_5, 
+                                  r->applies[4].appl_num, NULL_STR(r->applies[4].modifier), DB_CODE_MARKER, r->applies[4].duration);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->applies[5].appl_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_6, 
+                                  r->applies[5].appl_num, NULL_STR(r->applies[5].modifier), DB_CODE_MARKER, r->applies[5].duration);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->assign[0].class_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_MU, 
+                                  r->assign[0].class_num, r->assign[0].level, NULL_STR(r->assign[0].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[0].num_mana));
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->assign[1].class_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_CL, 
+                                  r->assign[1].class_num, r->assign[1].level, NULL_STR(r->assign[1].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[1].num_mana));
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->assign[2].class_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_TH, 
+                                  r->assign[2].class_num, r->assign[2].level, NULL_STR(r->assign[2].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[2].num_mana));
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->assign[3].class_num != -1) {
+     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_WA, 
+                                  r->assign[3].class_num, r->assign[3].level, NULL_STR(r->assign[3].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[3].num_mana));
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->effectiveness) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_EFFECTIVENESS, r->effectiveness);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->delay) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DELAY, r->delay);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->script) {
+     strncpy (buf1, r->script, sizeof(buf1)); 
+     p = strtok (buf1, "\n");
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SCRIPT, p);
+     fprintf(fp, "%s", buf);
+     while ((p=strtok('\0', "\n"))) {
+       snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SCRIPT, p);
+       fprintf(fp, "%s", buf);
+     }
+   }
  }
- fprintf (fp, "99");
+ fprintf (fp, "%2d\n", DB_CODE_END);
  fflush (fp);
  fclose (fp);
 }
@@ -1419,9 +1594,24 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                              }
                              spedit_show_objects(d);
                              return;
+    case SPEDIT_GET_DISPEL : if (!*arg) {
+                               SAFE_FREE(OLC_SPELL(d)->dispel[OLC_VAL(d)]); 
+                               OLC_SPELL(d)->dispel[OLC_VAL(d)] = NULL;
+                               spedit_show_dispel(d);
+                               return;
+                             }
+                             value = formula_interpreter (d->character,
+                                        d->character, OLC_NUM(d), FALSE,
+                                        arg, &rts_code);
+                             if (!rts_code) {
+                               SAFE_FREE(OLC_SPELL(d)->dispel[OLC_VAL(d)]); 
+                               OLC_SPELL(d)->dispel[OLC_VAL(d)] = strdup(arg);
+                             }
+                             spedit_show_dispel(d);
+                             return;
     case SPEDIT_SHOW_OBJECTS :
          if (!(x = atoi(arg))) break;
-         if (x > 3) {
+         if (x > MAX_SPELL_OBJECTS) {
            send_to_char (d->character, "Invalid choice!\r\n");
            spedit_show_objects(d);
            return;
@@ -1429,6 +1619,17 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
          send_to_char(d->character, "Object #%d : ", x);
          OLC_VAL(d) = x - 1;
          OLC_MODE(d) = SPEDIT_GET_OBJECT; 
+         return;
+    case SPEDIT_SHOW_DISPEL :
+         if (!(x = atoi(arg))) break;
+         if (x > MAX_SPELL_DISPEL) {
+           send_to_char (d->character, "Invalid choice!\r\n");
+           spedit_show_dispel(d);
+           return;
+         }
+         send_to_char(d->character, "Dispel #%d : ", x);
+         OLC_VAL(d) = x - 1;
+         OLC_MODE(d) = SPEDIT_GET_DISPEL; 
          return;
     case SPEDIT_CONFIRM_EDIT : 
          if ((*arg == 'y') || (*arg == 'Y')) { 
@@ -1487,12 +1688,15 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
           case 'a' :
           case 'A' : spedit_apply_menu (d);
                      return;
+          case 'd' :
+          case 'D' : spedit_show_dispel (d);
+                     return;
           case 'o' :
           case 'O' : spedit_show_objects (d);
                      return;
           case 's' :
           case 'S' : page_string (d, OLC_SPELL(d)->script, 1);
-                     d->backstr  = NULL_STR(OLC_SPELL(d)->script);
+                     d->backstr  = STRDUP(OLC_SPELL(d)->script);
                      d->str      = &OLC_SPELL(d)->script;
                      d->max_str  = MAX_STRING_LENGTH;
                      d->mail_to  = 0;
