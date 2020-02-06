@@ -30,7 +30,11 @@
 #define DB_CODE_DISPEL_3        27 /* 28 to 39 are free */
 #define DB_CODE_OBJECTS_1       40
 #define DB_CODE_OBJECTS_2       41
-#define DB_CODE_OBJECTS_3       42 /* 43 to 59 are free */
+#define DB_CODE_OBJECTS_3       42 /* 43 to 49 are free */
+#define DB_CODE_PTS_HP          50
+#define DB_CODE_PTS_MANA        51
+#define DB_CODE_PTS_MOVE        52
+#define DB_CODE_PTS_GOLD        53 /* 54 to 59 are free */
 #define DB_CODE_PROT_1          60
 #define DB_CODE_PROT_2          61
 #define DB_CODE_PROT_3          62
@@ -79,6 +83,13 @@ struct str_mesg {
    char *to_room;
 };
 
+struct str_pts {
+   char *hp;
+   char *mana;
+   char *move;
+   char *gold;
+};
+
 struct str_spells {
    char type;
    int  vnum;
@@ -99,6 +110,7 @@ struct str_spells {
    struct str_appl applies [MAX_SPELL_AFFECTS];
    struct str_assign assign [NUM_CLASSES]; 
    struct str_mesg messages;
+   struct str_pts points;
    void *function;
    struct str_spells *next;
 };

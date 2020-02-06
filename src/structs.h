@@ -291,8 +291,9 @@
 #define AFF_HIDE           20   /**< Char is hidden */
 #define AFF_FREE           21   /**< Room for future expansion */
 #define AFF_CHARM          22   /**< Char is charmed */
+#define AFF_PROTECT        23   /**< Char protected from spell */
 /** Total number of affect flags not including the don't use flag. */
-#define NUM_AFF_FLAGS   22
+#define NUM_AFF_FLAGS   23
 
 /* Modes of connectedness: used by descriptor_data.state 		*/
 #define CON_PLAYING       0 /**< Playing - Nominal state 		*/

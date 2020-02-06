@@ -284,6 +284,7 @@ const char *affected_bits[] =
   "HIDE",
   "UNUSED",
   "CHARM",
+  "PROT-SPELL",
   "\n"
 };
 

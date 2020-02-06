@@ -224,7 +224,8 @@ int mag_damage(int level, struct char_data *ch, struct char_data *victim,
     log("SYSERR: no damages set for spell vnum %d passed to mag_damage.", spellnum);
     return dam;
   }
-  dam = formula_interpreter (ch, victim, spellnum, TRUE, spell->damages, &rts_code);
+
+  dam = MIN(spell->max_dam, formula_interpreter (ch, victim, spellnum, TRUE, spell->damages, &rts_code));
 
 /*
   switch (spellnum) {
@@ -355,6 +356,8 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
              af[i].location = spell->applies[i].appl_num;
              af[i].modifier = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].modifier, &rts_code);
            } else {
+               af[i].location = spell->applies[i].appl_num; // remove if
+
                affect = get_spell_apply(spell, i);
                SET_BIT_AR(af[i].bitvector, affect - NUM_APPLIES);
            }
@@ -634,7 +637,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     if (af[i].bitvector[0] || af[i].bitvector[1] ||
         af[i].bitvector[2] || af[i].bitvector[3] ||
         (af[i].location != APPLY_NONE)) {
-      affect_join(victim, &af[i], accum_duration, FALSE, accum_affect, FALSE);
+      affect_join(victim, af+i, accum_duration, FALSE, accum_affect, FALSE);
     }
   
   if ((ch != victim) && (spell->messages.to_self != NULL))
@@ -898,11 +901,41 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 void mag_points(int level, struct char_data *ch, struct char_data *victim,
 		     int spellnum, int savetype)
 {
-  int healing = 0, move = 0;
+  struct str_spells *spell;
+
+  int hp, mana, move, gold, rts_code;
 
   if (victim == NULL)
     return;
 
+  spell = get_spell_by_vnum(spellnum);
+
+  if (!spell) {
+    log("SYSERR: unknown spellnum %d passed to mag_points.", spellnum);
+    return;
+  }
+
+  if (spell->points.hp) {
+    hp = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.hp, &rts_code);
+    GET_HIT(victim) = MIN(GET_MAX_HIT(victim), MAX(0, GET_HIT(victim) + hp));
+  }
+
+  if (spell->points.mana) {
+    mana = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.mana, &rts_code);
+    GET_MANA(victim) = MIN(GET_MAX_MANA(victim), MAX(0, GET_MANA(victim) + mana));
+  }
+
+  if (spell->points.move) {
+    move = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.move, &rts_code);
+    GET_MOVE(victim) = MIN(GET_MAX_MOVE(victim), MAX(0, GET_MOVE(victim) + move));
+  }
+
+  if (spell->points.gold) {
+    gold = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.gold, &rts_code);
+    GET_GOLD(victim) = MAX(0, GET_GOLD(victim) + gold);
+  }
+
+/*
   switch (spellnum) {
   case SPELL_CURE_LIGHT:
     healing = dice(1, 8) + 1 + (level / 4);
@@ -917,9 +950,19 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
     send_to_char(victim, "A warm feeling floods your body.\r\n");
     break;
   }
+
   GET_HIT(victim) = MIN(GET_MAX_HIT(victim), GET_HIT(victim) + healing);
   GET_MOVE(victim) = MIN(GET_MAX_MOVE(victim), GET_MOVE(victim) + move);
+*/
+
   update_pos(victim);
+
+  if ((ch != victim) && (spell->messages.to_self != NULL))
+    act(spell->messages.to_self, FALSE, ch, 0, ch, TO_CHAR);
+  if (spell->messages.to_vict != NULL)
+    act(spell->messages.to_vict, FALSE, victim, 0, ch, TO_CHAR);
+  if (spell->messages.to_room != NULL)
+    act(spell->messages.to_room, TRUE, victim, 0, ch, TO_ROOM);
 }
 
 void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,

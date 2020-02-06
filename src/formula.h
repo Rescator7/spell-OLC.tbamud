@@ -52,9 +52,15 @@
 #define CODE_VAR_SAVPETRI  46
 #define CODE_VAR_SAVBREATH 47
 #define CODE_VAR_SAVSPELL  48
-#define CODE_VAR_LAST      48    /* last variable  */ 
-#define CODE_ART_DICE      49    /* this was added later */
-#define CODE_COMMA         50
+#define CODE_VAR_HIT       49
+#define CODE_VAR_MANA      50
+#define CODE_VAR_MOVE      51
+#define CODE_VAR_IS_GOOD   52
+#define CODE_VAR_IS_NEUTRAL 53
+#define CODE_VAR_IS_EVIL   54
+#define CODE_VAR_LAST      54    /* last variable  */ 
+#define CODE_ART_DICE      55    /* this was added later */
+#define CODE_COMMA         56
 
 #define CODE_DIGIT         99    /* digit 0 to 9 */
 #define ERROR_5000         5000  /* Unknow variable or operator */
@@ -129,8 +135,14 @@ const char *list_codes[] = {
    "SAVPETRI",      /* 46 (z) */ 
    "SAVBREATH",     /* 47 (z) */
    "SAVSPELL",      /* 48 (z) */
-   "DICE(",         /* 49 (A) */
-   ",",             /* 50 (B) */
+   "HIT",           /* 49 (z) */
+   "MANA",          /* 50 (z) */
+   "MOVE",          /* 51 (z) */
+   "GOOD",          /* 52 (z) */
+   "NEUTRAL",       /* 53 (z) */
+   "EVIL",          /* 54 (z) */
+   "DICE(",         /* 55 (A) */
+   ",",             /* 56 (B) */
    "\n"
 };
 

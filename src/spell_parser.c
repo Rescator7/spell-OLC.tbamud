@@ -148,12 +148,15 @@ static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
  * this because you can guarantee > 0 and <= TOP_SPELL_DEFINE. */
 const char *skill_name(int num)
 {
+  return get_spell_name(num);
+  /*
   if (num > 0 && num <= TOP_SPELL_DEFINE)
     return (spell_info[num].name);
   else if (num == -1)
     return ("UNUSED");
   else
     return ("UNDEFINED");
+  */
 }
 
 /*

@@ -201,7 +201,7 @@ int remove_brace (struct formula **head_formula, struct formula *C, // int * rts
 
 #ifdef DEBUG_FORMULA
  send_to_char(ch, "remove_brace\r\n");
- show_ABC(ch, C);
+// show_ABC(ch, C);
 #endif
 
  if (B->command == CODE_ART_RAND) {
@@ -263,6 +263,10 @@ int remove_brace (struct formula **head_formula, struct formula *C, // int * rts
    }
    remove_node (head_formula, A->prev);
    remove_node (head_formula, A->prev->prev);
+
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
    return 1;
  }
  return 0; 
@@ -290,8 +294,14 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
    case CODE_ART_SUB : if (C->next)
                          C->next->sign = -1;  
                        remove_node (head_formula, C);
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
                        return (B); 
    case CODE_ART_ADD : remove_node (head_formula, C);
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
                        return (B);
  }
 
@@ -315,6 +325,9 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
                              remove_node (head_formula, C->next);
                              remove_node (head_formula, C);
                              remove_node (head_formula, B);
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
                            }
                          return (A);   
    case CODE_LOG_OR    : A->value = (A->value || C->value) ? 1 : 0 ; break;
@@ -332,12 +345,18 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
    case CODE_ART_SUB   : if (!A) { 
                            C->sign = -1;
                            remove_node (head_formula, B);
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
                            return (C);
                          } else
                              A->value = (A->value - C->value);
                          break; 
    case CODE_ART_ADD   : if (!A) {
                            remove_node (head_formula, B);
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
                            return (C);
                          } else
                              A->value = (A->value + C->value); 
@@ -353,6 +372,9 @@ struct formula *formula_do_oper (struct formula **head_formula, struct formula *
    case CODE_ART_NOT : C->sign  = 1;
                        C->value = !C->value ? 1 : 0;
                        remove_node (head_formula, B);
+#ifdef DEBUG_FORMULA
+   show_formula(ch, *head_formula);
+#endif
                        return (C);
  }
  remove_node(head_formula, C); 
@@ -553,6 +575,12 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 
    if ((otype_act == CODE_IDE_SELF) || (otype_act == CODE_IDE_VICT))
      switch (type_act) {
+       case CODE_VAR_IS_GOOD :   num = IS_GOOD(self_vict == CODE_IDE_SELF ? self : vict);
+                                 break;
+       case CODE_VAR_IS_NEUTRAL: num = IS_NEUTRAL(self_vict == CODE_IDE_SELF ? self : vict);
+                                 break;
+       case CODE_VAR_IS_EVIL :   num = IS_EVIL(self_vict == CODE_IDE_SELF ? self : vict);
+                                 break;
        case CODE_VAR_STR :       num = GET_STR(self_vict == CODE_IDE_SELF ? self : vict);
                                  break;
        case CODE_VAR_DEX :       num = GET_DEX(self_vict == CODE_IDE_SELF ? self : vict); 
@@ -575,9 +603,15 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
                                  break;
        case CODE_VAR_HEIGHT :    num = GET_HEIGHT(self_vict == CODE_IDE_SELF ? self : vict);
                                  break;
+       case CODE_VAR_MANA :      num = GET_MANA(self_vict == CODE_IDE_SELF ? self : vict);
+                                 break;
        case CODE_VAR_MAXMANA :   num = GET_MAX_MANA(self_vict == CODE_IDE_SELF ? self : vict);
                                  break;
+       case CODE_VAR_HIT :       num = GET_HIT(self_vict == CODE_IDE_SELF ? self : vict);
+                                 break;
        case CODE_VAR_MAXHIT :    num = GET_MAX_HIT(self_vict == CODE_IDE_SELF ? self : vict);
+                                 break;
+       case CODE_VAR_MOVE :      num = GET_MOVE(self_vict == CODE_IDE_SELF ? self : vict);
                                  break;
        case CODE_VAR_MAXMOVE :   num = GET_MAX_MOVE(self_vict == CODE_IDE_SELF ? self : vict);
                                  break;

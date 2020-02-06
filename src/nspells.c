@@ -898,16 +898,10 @@ ACMD(do_cast)
  else // skill
    s = argument;
 
- send_to_char(ch, "searching for %s\r\n", s);
- 
  if (subcmd == SCMD_SPELL)
    spell = get_spell_by_name(s, SPELL); 
  else
    spell = get_spell_by_vnum(subcmd);
-
- // debuging only, remove
- if (spell)
-   send_to_char(ch, "found %d\r\n", spell->vnum);
 
  if (!spell || (spell->status != available)) {
    if (subcmd == SCMD_SPELL)

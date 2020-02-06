@@ -121,6 +121,12 @@ int is_dispel_set(struct str_spells *spell)
 
 int is_points_set(struct str_spells *spell)
 {
+  if (spell->points.hp) return 1;
+  if (spell->points.mana) return 1;
+  if (spell->points.move) return 1;
+  if (spell->points.gold) return 1;
+
+  return 0;
 }
 
 int is_messages_set(struct str_spells *spell)
@@ -459,6 +465,9 @@ void spedit_show_warnings (struct descriptor_data *d) {
   if (is_dispel_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
     strcat(buf, "Magic flags: MAG_UNAFFECTS is required because dispell is set.\r\n");
   
+  if (is_points_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_POINTS))
+    strcat(buf, "Magic flags: MAG_POINTS is required because points is set.\r\n");
+
   if (*buf)
     send_to_char (d->character, "\r\n%s", buf);
 }
@@ -466,15 +475,15 @@ void spedit_show_warnings (struct descriptor_data *d) {
 void spedit_show_messages(struct descriptor_data *d) {
   char buf[2048];
 
-  sprintf (buf, "\r\n1) Wear off  : %s\r\n"
-                "2) To self   : %s\r\n"
-                "3) To victim : %s\r\n"
-                "4) To room   : %s\r\n" 
-                "\r\nEnter choice (0 to quit) : ",
-                EMPTY_STR(OLC_SPELL(d)->messages.wear_off),
-                EMPTY_STR(OLC_SPELL(d)->messages.to_self),
-                EMPTY_STR(OLC_SPELL(d)->messages.to_vict),
-                EMPTY_STR(OLC_SPELL(d)->messages.to_room));
+  snprintf (buf, sizeof(buf), "\r\n1) Wear off  : %s\r\n"
+                              "2) To self   : %s\r\n"
+                              "3) To victim : %s\r\n"
+                              "4) To room   : %s\r\n" 
+                              "\r\nEnter choice (0 to quit) : ",
+                              EMPTY_STR(OLC_SPELL(d)->messages.wear_off),
+                              EMPTY_STR(OLC_SPELL(d)->messages.to_self),
+                              EMPTY_STR(OLC_SPELL(d)->messages.to_vict),
+                              EMPTY_STR(OLC_SPELL(d)->messages.to_room));
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_MESSAGES;
@@ -483,13 +492,13 @@ void spedit_show_messages(struct descriptor_data *d) {
 void spedit_show_objects(struct descriptor_data *d) {
   char buf[2048];
 
-  sprintf (buf, "\r\n1) Object : %s\r\n"
-                "2) Object : %s\r\n"
-                "3) Object : %s\r\n"
-                "\r\nEnter choice (0 to quit) : ",
-                EMPTY_STR(OLC_SPELL(d)->objects[0]),
-                EMPTY_STR(OLC_SPELL(d)->objects[1]),
-                EMPTY_STR(OLC_SPELL(d)->objects[2]));
+  snprintf (buf, sizeof(buf), "\r\n1) Object : %s\r\n"
+                              "2) Object : %s\r\n"
+                              "3) Object : %s\r\n"
+                              "\r\nEnter choice (0 to quit) : ",
+                              EMPTY_STR(OLC_SPELL(d)->objects[0]),
+                              EMPTY_STR(OLC_SPELL(d)->objects[1]),
+                              EMPTY_STR(OLC_SPELL(d)->objects[2]));
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_OBJECTS;
@@ -498,16 +507,33 @@ void spedit_show_objects(struct descriptor_data *d) {
 void spedit_show_dispel(struct descriptor_data *d) {
   char buf[2048];
 
-  sprintf (buf, "\r\n1) Spell : %s\r\n"
-                "2) Spell : %s\r\n"
-                "3) Spell : %s\r\n"
-                "\r\nEnter choice (0 to quit) : ",
-                EMPTY_STR(OLC_SPELL(d)->dispel[0]),
-                EMPTY_STR(OLC_SPELL(d)->dispel[1]),
-                EMPTY_STR(OLC_SPELL(d)->dispel[2]));
+  snprintf (buf, sizeof(buf), "\r\n1) Spell : %s\r\n"
+                              "2) Spell : %s\r\n"
+                              "3) Spell : %s\r\n"
+                              "\r\nEnter choice (0 to quit) : ",
+                              EMPTY_STR(OLC_SPELL(d)->dispel[0]),
+                              EMPTY_STR(OLC_SPELL(d)->dispel[1]),
+                              EMPTY_STR(OLC_SPELL(d)->dispel[2]));
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_DISPEL;
+}
+
+void spedit_show_points(struct descriptor_data *d) {
+  char buf[2048];
+  
+  snprintf (buf, sizeof(buf), "\r\n1) Hit points  : %s\r\n"
+                              "2) Mana points : %s\r\n"
+                              "3) Move points : %s\r\n"
+                              "4) Gold        : %s\r\n"
+                              "\r\n Enter choice (0 to quit) : ",
+                              EMPTY_STR(OLC_SPELL(d)->points.hp),
+                              EMPTY_STR(OLC_SPELL(d)->points.mana),
+                              EMPTY_STR(OLC_SPELL(d)->points.move),
+                              EMPTY_STR(OLC_SPELL(d)->points.gold));
+
+  send_to_char (d->character, "%s", buf);
+  OLC_MODE(d) = SPEDIT_SHOW_POINTS;
 }
 
 void spedit_main_menu (struct descriptor_data *d) {
@@ -529,7 +555,7 @@ void spedit_main_menu (struct descriptor_data *d) {
   send_to_char (d->character, "[H[J");
 #endif         
 
-  sprintf (buf, "%s-- %s Number      : [%s%5d%s] %s%s%s\r\n"
+  snprintf (buf, sizeof(buf), "%s-- %s Number      : [%s%5d%s] %s%s%s\r\n"
                 "%sT%s) Type              : [%s%-5s%s]\r\n"
                 "%s1%s) %sStatus            : %s%s\r\n"  
                 "%s2%s) Name              : %s%s\r\n"
@@ -594,6 +620,11 @@ void spedit_empty_spell (struct str_spells *spell) {
   SAFE_FREE(spell->messages.to_vict);
   SAFE_FREE(spell->messages.to_room);
 
+  SAFE_FREE(spell->points.hp);
+  SAFE_FREE(spell->points.mana);
+  SAFE_FREE(spell->points.move);
+  SAFE_FREE(spell->points.gold);
+
   for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
     SAFE_FREE(spell->protfrom[i].duration);
     SAFE_FREE(spell->protfrom[i].resist);
@@ -657,6 +688,11 @@ void spedit_copyover_spell (struct str_spells *from, struct str_spells *to)
   to->messages.to_self = STRDUP(from->messages.to_self);
   to->messages.to_vict = STRDUP(from->messages.to_vict);
   to->messages.to_room = STRDUP(from->messages.to_room);
+
+  to->points.hp = STRDUP(from->points.hp);
+  to->points.mana = STRDUP(from->points.mana);
+  to->points.move = STRDUP(from->points.move);
+  to->points.gold = STRDUP(from->points.gold);
 
   for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
     to->protfrom[i].prot_num = from->protfrom[i].prot_num;
@@ -732,6 +768,11 @@ void spedit_init_new_spell (struct str_spells *spell)
  spell->messages.to_self = NULL;
  spell->messages.to_vict = NULL;
  spell->messages.to_room = NULL;
+
+ spell->points.hp = NULL;
+ spell->points.mana = NULL;
+ spell->points.move = NULL;
+ spell->points.gold = NULL;
 
  for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
    spell->protfrom[i].prot_num = -1;
@@ -888,6 +929,30 @@ void boot_spells (void)
                if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                   buf[strlen(buf)-1] = '\0';
                   Q->objects[x] = strdup (buf);
+                }
+                break;
+      case DB_CODE_PTS_HP :
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  buf[strlen(buf)-1] = '\0';
+                  Q->points.hp = strdup (buf);
+                }
+                break;
+      case DB_CODE_PTS_MANA :
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  buf[strlen(buf)-1] = '\0';
+                  Q->points.mana = strdup (buf);
+                }
+                break;
+      case DB_CODE_PTS_MOVE :
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  buf[strlen(buf)-1] = '\0';
+                  Q->points.move = strdup (buf);
+                }
+                break;
+      case DB_CODE_PTS_GOLD :
+               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                  buf[strlen(buf)-1] = '\0';
+                  Q->points.gold = strdup (buf);
                 }
                 break;
       case DB_CODE_PROT_1 :
@@ -1066,6 +1131,25 @@ void spedit_save_to_disk (void)
 
    if (r->objects[2]) {
      snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_OBJECTS_3, r->objects[2]);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->points.hp) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_HP, r->points.hp);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->points.mana) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_MANA, r->points.mana);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->points.move) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_MOVE, r->points.move);
+     fprintf(fp, "%s", buf);
+   }
+   if (r->points.gold) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_GOLD, r->points.gold);
      fprintf(fp, "%s", buf);
    }
 
@@ -1248,6 +1332,10 @@ int spedit_setup (struct descriptor_data *d)
 }
 
 void spedit_parse (struct descriptor_data *d, char *arg) {
+  const char *points[] = { "Hit points =+ ",
+                           "Mana points =+ ",
+                           "Move points =+ ",
+                           "Gold += " }; 
   char buf[2048];
 
   int x = 0, value, rts_code = 0;
@@ -1428,25 +1516,23 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                               break;  
     case SPEDIT_ASSIGN_MENU :
            if (!(x = atoi(arg))) break;
-           else 
-             if ((x > 0) && (x < 5)) {
-               OLC_VAL (d) = x - 1;
-               spedit_assignement_menu (d);
-             } else {
-                 send_to_char (d->character, "Invalid choice!\r\n");
-                 spedit_assign_menu (d);
-               }
+           if ((x > 0) && (x < 5)) {
+             OLC_VAL (d) = x - 1;
+             spedit_assignement_menu (d);
+           } else {
+               send_to_char (d->character, "Invalid choice!\r\n");
+               spedit_assign_menu (d);
+             }
            return;
     case SPEDIT_APPLY_MENU : 
            if (!(x = atoi(arg))) break;
-           else 
-             if ((x > 0) && (x < MAX_SPELL_AFFECTS)) {
-               OLC_VAL(d) = x - 1;  
-               spedit_choose_apply (d);
-             } else {
-                 send_to_char (d->character, "Invalid choice!\r\n");
-                 spedit_apply_menu (d);
-               } 
+           if ((x > 0) && (x < MAX_SPELL_AFFECTS)) {
+             OLC_VAL(d) = x - 1;  
+             spedit_choose_apply (d);
+           } else {
+               send_to_char (d->character, "Invalid choice!\r\n");
+               spedit_apply_menu (d);
+             } 
            return; 
     case SPEDIT_SHOW_APPLY : 
            if ((*arg == 'r') || (*arg == 'R')) {
@@ -1503,21 +1589,25 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
              }
            return;
     case SPEDIT_GET_MSG_WEAR_OFF :
+         delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.wear_off);
          OLC_SPELL(d)->messages.wear_off = (arg && *arg) ? strdup(arg) : NULL;
          spedit_show_messages (d);
          return;
     case SPEDIT_GET_MSG_TO_SELF :
+         delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.to_self);
          OLC_SPELL(d)->messages.to_self = (arg && *arg) ? strdup(arg) : NULL;
          spedit_show_messages (d);
          return;
     case SPEDIT_GET_MSG_TO_VICT :
+         delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.to_vict);
          OLC_SPELL(d)->messages.to_vict = (arg && *arg) ? strdup(arg) : NULL;
          spedit_show_messages (d);
          return;
     case SPEDIT_GET_MSG_TO_ROOM :
+         delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.to_room);
          OLC_SPELL(d)->messages.to_room = (arg && *arg) ? strdup(arg) : NULL;
          spedit_show_messages (d);
@@ -1540,78 +1630,95 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
            }
     case SPEDIT_GET_MINPOS :
          if (!(x = atoi(arg))) break;
+         if ((x < 0) || (x > NUM_CHAR_POSITION)) {
+           send_to_char (d->character, "Invalid choice!\r\n");
+           spedit_minpos_menu (d);
+           return;
+         }   
          else
-           if ( (x < 0) || (x > NUM_CHAR_POSITION) ) {
-             send_to_char (d->character, "Invalid choice!\r\n");
-             spedit_minpos_menu (d);
-             return;
-           }   
-           else
-             OLC_SPELL(d)->min_pos = x - 1;
+           OLC_SPELL(d)->min_pos = x - 1;
          break;   
     case SPEDIT_SHOW_TARG_FLAGS : 
          if (!(x = atoi (arg))) break;
-         else 
-            if ( (x < 0) || (x > NUM_SPELL_FLAGS) ) 
-              send_to_char (d->character, "Invalid choice!\r\n");
-            else
-              OLC_SPELL(d)->targ_flags ^= (1 << (x - 1));
+         if ((x < 0) || (x > NUM_SPELL_FLAGS)) 
+           send_to_char (d->character, "Invalid choice!\r\n");
+         else
+           OLC_SPELL(d)->targ_flags ^= (1 << (x - 1));
          spedit_targ_flags_menu (d);
          return;
     case SPEDIT_SHOW_MAG_FLAGS:
          if (!(x = atoi (arg))) break;
-         else 
-            if ( (x < 0) || (x > NUM_MAG) ) 
-              send_to_char (d->character, "Invalid choice!\r\n");
-            else
-              OLC_SPELL(d)->mag_flags ^= (1 << (x - 1));
+         if ((x < 0) || (x > NUM_MAG)) 
+           send_to_char (d->character, "Invalid choice!\r\n");
+         else
+           OLC_SPELL(d)->mag_flags ^= (1 << (x - 1));
          spedit_mag_flags_menu (d);
          return;
     case SPEDIT_PROTECTION_MENU :
          if (!(x = atoi (arg))) break;
-         else 
-           if ( (x < 0) || (x > MAX_SPELL_PROTECTIONS) ) {
-             send_to_char (d->character, "Invalid choice!\r\n");
-             spedit_protection_menu (d);
-             return;
-           }
+         if ((x < 0) || (x > MAX_SPELL_PROTECTIONS)) {
+           send_to_char (d->character, "Invalid choice!\r\n");
+           spedit_protection_menu (d);
+           return;
+         }
          OLC_VAL(d) = x - 1;
          send_to_char (d->character, "Spell VNUM (0 to quit, 'r' to remove) : ");
          OLC_MODE(d) = SPEDIT_GET_SPELL_NUM;
          return;   
-    case SPEDIT_GET_OBJECT : if (!*arg) {
+    case SPEDIT_GET_OBJECT : if (*arg) 
+                               value = formula_interpreter (d->character,
+                                          d->character, OLC_NUM(d), FALSE,
+                                          arg, &rts_code);
+                             if (!*arg || !rts_code) {
                                SAFE_FREE(OLC_SPELL(d)->objects[OLC_VAL(d)]); 
                                OLC_SPELL(d)->objects[OLC_VAL(d)] = NULL;
-                               spedit_show_objects(d);
-                               return;
-                             }
-                             value = formula_interpreter (d->character,
-                                        d->character, OLC_NUM(d), FALSE,
-                                        arg, &rts_code);
-                             if (!rts_code) {
-                               SAFE_FREE(OLC_SPELL(d)->objects[OLC_VAL(d)]); 
-                               OLC_SPELL(d)->objects[OLC_VAL(d)] = strdup(arg);
+
+                               if (*arg) 
+                                 OLC_SPELL(d)->objects[OLC_VAL(d)] = strdup(arg);
                              }
                              spedit_show_objects(d);
                              return;
-    case SPEDIT_GET_DISPEL : if (!*arg) {
+    case SPEDIT_GET_DISPEL : if (*arg) 
+                               value = formula_interpreter (d->character,
+                                          d->character, OLC_NUM(d), FALSE,
+                                          arg, &rts_code);
+                             if (!*arg || !rts_code) {
                                SAFE_FREE(OLC_SPELL(d)->dispel[OLC_VAL(d)]); 
                                OLC_SPELL(d)->dispel[OLC_VAL(d)] = NULL;
-                               spedit_show_dispel(d);
-                               return;
-                             }
-                             value = formula_interpreter (d->character,
-                                        d->character, OLC_NUM(d), FALSE,
-                                        arg, &rts_code);
-                             if (!rts_code) {
-                               SAFE_FREE(OLC_SPELL(d)->dispel[OLC_VAL(d)]); 
-                               OLC_SPELL(d)->dispel[OLC_VAL(d)] = strdup(arg);
+
+                               if (*arg)
+                                 OLC_SPELL(d)->dispel[OLC_VAL(d)] = strdup(arg);
                              }
                              spedit_show_dispel(d);
                              return;
+    case SPEDIT_GET_POINTS : if (*arg) 
+                                value = formula_interpreter (d->character,
+                                          d->character, OLC_NUM(d), FALSE,
+                                          arg, &rts_code);
+                             if (!arg || !rts_code) {
+		               switch (OLC_VAL(d)) {
+                                  case 0 : SAFE_FREE(OLC_SPELL(d)->points.hp);
+                                           OLC_SPELL(d)->points.hp = NULL;
+                                           if (*arg) OLC_SPELL(d)->points.hp = strdup(arg);
+                                           break;
+                                  case 1 : SAFE_FREE(OLC_SPELL(d)->points.mana);
+                                           OLC_SPELL(d)->points.mana = NULL;
+                                           if (*arg) OLC_SPELL(d)->points.mana = strdup(arg);
+                                           break;
+                                  case 2 : SAFE_FREE(OLC_SPELL(d)->points.move);
+                                           OLC_SPELL(d)->points.move = NULL;
+                                           if (*arg) OLC_SPELL(d)->points.move = strdup(arg);
+                                           break;
+                                  case 3 : SAFE_FREE(OLC_SPELL(d)->points.gold);
+                                           OLC_SPELL(d)->points.gold = NULL;
+                                           if (*arg) OLC_SPELL(d)->points.gold = strdup(arg);
+                               } 
+                             } 
+                             spedit_show_points (d);
+                             return;
     case SPEDIT_SHOW_OBJECTS :
          if (!(x = atoi(arg))) break;
-         if (x > MAX_SPELL_OBJECTS) {
+         if ((x < 0) || (x > MAX_SPELL_OBJECTS)) {
            send_to_char (d->character, "Invalid choice!\r\n");
            spedit_show_objects(d);
            return;
@@ -1622,7 +1729,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
          return;
     case SPEDIT_SHOW_DISPEL :
          if (!(x = atoi(arg))) break;
-         if (x > MAX_SPELL_DISPEL) {
+         if ((x < 0) || (x > MAX_SPELL_DISPEL)) {
            send_to_char (d->character, "Invalid choice!\r\n");
            spedit_show_dispel(d);
            return;
@@ -1630,6 +1737,17 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
          send_to_char(d->character, "Dispel #%d : ", x);
          OLC_VAL(d) = x - 1;
          OLC_MODE(d) = SPEDIT_GET_DISPEL; 
+         return;
+    case SPEDIT_SHOW_POINTS :
+         if (!(x = atoi(arg))) break;
+         if ((x < 0) || (x > 4)) {
+           send_to_char (d->character, "Invalid choice!\r\n");
+           spedit_show_points (d);
+           return;
+         }
+         send_to_char(d->character, "%s", points[x-1]);
+         OLC_VAL(d) = x - 1;
+         OLC_MODE(d) = SPEDIT_GET_POINTS;
          return;
     case SPEDIT_CONFIRM_EDIT : 
          if ((*arg == 'y') || (*arg == 'Y')) { 
@@ -1681,6 +1799,8 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                      return;
           case '8' : send_to_char (d->character, "%% of effectiveness : ");
                      OLC_MODE(d) = SPEDIT_GET_EFFECTIVENESS;
+                     return;
+          case '9' : spedit_show_points (d);
                      return;
           case 'p' :
           case 'P' : spedit_protection_menu (d);
