@@ -37,7 +37,8 @@
 #define MAG_VIOLENT     (1 << 12)
 #define MAG_ACCDUR      (1 << 13)
 #define MAG_ACCMOD      (1 << 14)
-#define NUM_MAG         15
+#define MAG_PROTECTION  (1 << 15)
+#define NUM_MAG         16
 
 #define TYPE_UNDEFINED               (-1)
 #define SPELL_RESERVED_DBC            0  /* SKILL NUMBER ZERO -- RESERVED */
@@ -252,6 +253,9 @@ ASPELL(spell_detect_poison);
 /* basic magic calling functions */
 
 int find_skill_num(char *name);
+
+void mag_protections(int level, struct char_data *ch, struct char_data *tch,
+  int spellnum, int spellprot, int dur, int res);
 
 int mag_damage(int level, struct char_data *ch, struct char_data *victim,
   int spellnum, int savetype);

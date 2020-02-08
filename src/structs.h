@@ -998,7 +998,7 @@ struct affected_type
   sh_int spell; /**< The spell that caused this */
   sh_int duration; /**< For how long its effects will last      */
   sbyte modifier;  /**< Added/subtracted to/from apropriate ability     */
-  byte location;   /**< Tells which ability to change(APPLY_XXX). */
+  sh_int location;   /**< Tells which ability to change(APPLY_XXX). */
   int bitvector[AF_ARRAY_MAX]; /**< Tells which bits to set (AFF_XXX). */
 
   struct affected_type *next; /**< The next affect in the list of affects. */

@@ -21,7 +21,9 @@
 #define DB_CODE_DELAY           5
 #define DB_CODE_SCRIPT          6
 #define DB_CODE_END             7
-#define DB_CODE_MSG_WEAR_OFF    10 /* 08 and 09 are free */
+#define DB_CODE_SUMMON_MOB      8
+#define DB_CODE_SUMMON_REQ      9
+#define DB_CODE_MSG_WEAR_OFF    10 
 #define DB_CODE_MSG_TO_SELF     11
 #define DB_CODE_MSG_TO_VICT     12
 #define DB_CODE_MSG_TO_ROOM     13 /* 14 to 24 are free */
@@ -54,8 +56,16 @@
 #define DB_CODE_MARKER          99
 
 struct str_spells *get_spell_by_vnum(int vnum);
+struct str_spells *get_spell_by_name (char *name, char type);
+int formula_interpreter (struct char_data *self, struct char_data *vict,
+                         int spell_vnum, int syserr, char *cmd, int *rts_code);
+int get_spell_level_by_vnum(int vnum, int class);
+int get_spell_apply(struct str_spells *spell, int pos);
 int find_spell_by_vnum (int vnum);
+
+
 char *get_spell_name(int vnum);
+char *get_spell_wear_off (int vnum);
 
 struct str_prot {
    int  prot_num;
@@ -106,6 +116,8 @@ struct str_spells {
    char *script;
    char *objects[MAX_SPELL_OBJECTS];
    char *dispel[MAX_SPELL_DISPEL];
+   char *summon_mob;
+   char *summon_req;
    struct str_prot protfrom [MAX_SPELL_PROTECTIONS];
    struct str_appl applies [MAX_SPELL_AFFECTS];
    struct str_assign assign [NUM_CLASSES]; 
@@ -114,4 +126,6 @@ struct str_spells {
    void *function;
    struct str_spells *next;
 };
+
+void spedit_free_spell (struct str_spells *spell);
 #endif

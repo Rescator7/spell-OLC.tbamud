@@ -35,8 +35,6 @@ const char *nrm, *grn, *cyn, *yel, *YEL, *bln, *red;
 /* Internal Function prototypes  */
 static void free_config(struct config_data *data);
 
-extern void spedit_free_spell (struct str_spells *spell);
-
 /* Only player characters should be using OLC anyway. */
 void clear_screen(struct descriptor_data *d)
 {

@@ -198,6 +198,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 	     struct obj_data *ovict, int spellnum, int level, int casttype)
 {
   int savetype;
+  int i, dur, res, rts_code; 
   struct str_spells *spell;
 
   if (spellnum < 1 || spellnum > TOP_SPELL_DEFINE)
@@ -216,7 +217,12 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     return (0);
   }
 
-  spell = get_spell_by_vnum(spellnum); // bobo
+  spell = get_spell_by_vnum(spellnum); 
+  
+  if (!spell) {
+    log("SYSERR: spell not found vnum %d passed to call_magic.", spellnum);
+    return (0);
+  }
 
   if (ROOM_FLAGGED(IN_ROOM(caster), ROOM_PEACEFUL) &&
      ((spell->mag_flags & MAG_DAMAGE) || (spell->mag_flags & MAG_VIOLENT))) {
@@ -247,6 +253,14 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
   if (spell->mag_flags & MAG_DAMAGE)
     if (mag_damage(level, caster, cvict, spellnum, savetype) == -1)
       return (-1);	/* Successful and target died, don't cast again. */
+
+  if (spell->mag_flags & MAG_PROTECTION) {
+    for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
+      dur = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].duration, &rts_code);
+      res = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].resist, &rts_code);
+      mag_protections(level, caster, cvict, spell->vnum, spell->protfrom[i].prot_num, dur, res);
+    }
+  }
 
   if (spell->mag_flags & MAG_AFFECTS)
     mag_affects(level, caster, cvict, spellnum, savetype);

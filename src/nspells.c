@@ -14,13 +14,9 @@
 #include "db.h"
 #include "config.h"
 #include "fight.h"
+#include "spedit.h"
 
-extern struct str_spells *get_spell_by_vnum (int vnum);
-extern struct str_spells *get_spell_by_name (char *name, char type);
-extern int get_spell_level_by_vnum(int vnum, int class);
 extern int mag_manacost(struct char_data *ch, int spellnum);
-
-ACMD(do_whirlwind);
 
 void save_plrspells (struct char_data *ch)
 {
@@ -89,28 +85,6 @@ int find_spell_assign (struct char_data *ch, struct str_spells *ptr)
  return -1;
 }
 
-// FIX ME... using num_prac is wrong
-int IS_SPELL_LEARNED (struct char_data *ch, int vnum) {
-  struct str_plrspells *Q;
-  struct str_spells *ptr;
-  int x, rts_code;
-
-  for (ptr = list_spells; ptr && (ptr->vnum != vnum); ptr = ptr->next);
-  if (!ptr) {
-    log("SYSERR: (IS_SPELL_LEARNED): spells %d doesn't exist!", vnum);
-    return FALSE;
-  }
-  for (Q = ch->plrspells; Q; Q = Q->next)
-    if (Q->vnum == vnum) {
-      if ((x = find_spell_assign (ch, ptr)) == -1)  
-        return FALSE; 
-      if (Q->num_prac >= formula_interpreter (ch, ch, vnum, TRUE, ptr->assign[x].num_prac, 
-                                              &rts_code))
-        return TRUE;
-    }
-  return FALSE;   
-}
-
 char *get_spell_wear_off (int vnum) 
 {
  struct str_spells *Q;
@@ -154,7 +128,7 @@ void assign_spells (void)
  ACMD(do_steal);
  ACMD(do_hide);
  ACMD(do_pick_lock);
- ACMD(do_whirwind);
+ ACMD(do_whirlwind);
  ACMD(do_bandage);
 
  int i = 0;
@@ -932,7 +906,7 @@ ACMD(do_cast)
    send_to_char(ch, "You do not know that %s!\r\n", (spell->type == SPELL) ? "spell" : "skill");
    return;
  }
- if ((GET_LEVEL(ch) < LVL_IMMORT) && !IS_SPELL_LEARNED (ch, spell->vnum)) {
+ if ((GET_LEVEL(ch) < LVL_IMMORT) && (GET_SKILL(ch, spell->vnum) == 0)) {
    send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
    return;
  }

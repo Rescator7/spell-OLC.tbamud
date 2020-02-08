@@ -41,8 +41,6 @@
 
 ACMD(do_formula);
 
-extern struct str_spells *get_spell_by_name(char *name, char type);
-
 /* local (file scope) functions */
 static int perform_dupe_check(struct descriptor_data *d);
 static struct alias_data *find_alias(struct alias_data *alias_list, char *str);

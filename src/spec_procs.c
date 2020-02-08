@@ -28,8 +28,6 @@
 #include "modify.h"
 #include "spedit.h"
 
-extern struct str_spells *get_spell_by_vnum(int vnum);
-
 /* locally defined functions of local (file) scope */
 static int compare_spells(const void *x, const void *y);
 static const char *how_good(int percent);

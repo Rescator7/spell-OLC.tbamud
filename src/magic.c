@@ -24,13 +24,9 @@
 #include "mud_event.h"
 #include "spedit.h"
 
-
-extern struct str_spells *get_spell_by_vnum(int vnum);
-extern int formula_interpreter (struct char_data *self, struct char_data *vict,
-                               int spell_vnum, int syserr, char *cmd, int *rts_code);
-
-extern char *get_spell_wear_off (int vnum);
-extern int get_spell_apply(struct str_spells *spell, int pos);
+#define MAG_SUCCESS  1
+#define MAG_FAIL     2
+#define MAG_NOEFFECT 3
 
 /* local file scope function prototypes */
 static int mag_materials(struct char_data *ch, IDXTYPE item0, IDXTYPE item1, IDXTYPE item2, int extract, int verbose);
@@ -227,6 +223,22 @@ int mag_damage(int level, struct char_data *ch, struct char_data *victim,
 
   dam = MIN(spell->max_dam, formula_interpreter (ch, victim, spellnum, TRUE, spell->damages, &rts_code));
 
+  if ((spellnum == SPELL_DISPEL_EVIL) && IS_EVIL(ch)) {
+    victim = ch;
+    dam = GET_HIT(ch) - 1;
+  } else if (IS_GOOD(victim)) {
+    act("The gods protect $N.", FALSE, ch, 0, victim, TO_CHAR);
+    return (0);
+  }
+
+  if ((spellnum == SPELL_DISPEL_GOOD) && IS_GOOD(ch)) {
+    victim = ch;
+    dam = GET_HIT(ch) - 1;
+  } else if (IS_EVIL(victim)) {
+    act("The gods protect $N.", FALSE, ch, 0, victim, TO_CHAR);
+    return (0);
+  }
+
 /*
   switch (spellnum) {
     // Mostly mages 
@@ -402,8 +414,8 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
                                 return;
 
                               if (GET_POS(victim) > POS_SLEEPING) {
-                                send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
-                                act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
+//                                send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
+//                                act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
                                 GET_POS(victim) = POS_SLEEPING;
                               }
                               break;
@@ -648,6 +660,34 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     act(spell->messages.to_room, TRUE, victim, 0, ch, TO_ROOM);
 }
 
+void mag_protections(int level, struct char_data *ch, struct char_data *tch, int spellnum, int spellprot, int dur, int res)
+{
+  struct str_spells *spell;
+  struct affected_type af;
+  int accum_duration = FALSE;
+
+  if (tch == NULL || ch == NULL)
+    return;
+
+  spell = get_spell_by_vnum(spellnum);
+
+  if (!spell) {
+    log("SYSERR: unknown spellnum %d passed to mag_affects.", spellnum);
+    return;
+  }
+ 
+  if (spell->mag_flags & MAG_ACCDUR)
+    accum_duration = TRUE;
+  SET_BIT_AR(af.bitvector, AFF_PROTECT);
+  af.spell = spellnum;
+  af.location = spellprot;
+  af.modifier = res;
+  af.duration = dur;
+// bobo
+  affect_join(tch, &af, accum_duration, FALSE, FALSE, FALSE);
+  send_to_char(ch, "magic: spell num: %d, spell prot: %d, dur: %d res: %d\r\n", spellnum, spellprot, dur, res);
+}
+
 /* This function is used to provide services to mag_groups.  This function is
  * the one you should change to add new group spells. */
 static void perform_mag_groups(int level, struct char_data *ch,
@@ -809,9 +849,18 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
   struct obj_data *tobj, *next_obj;
   int pfail = 0, msg = 0, fmsg = 0, num = 1, handle_corpse = FALSE, i;
   mob_vnum mob_num;
+  struct str_spells *spell;
+  int obj_num, rts_code;
 
   if (ch == NULL)
     return;
+
+  spell = get_spell_by_vnum(spellnum);
+
+  if (!spell) {
+    log("SYSERR: unknown spellnum %d passed to mag_summon.", spellnum);
+    return;
+  }
 
   switch (spellnum) {
   case SPELL_CLONE:
@@ -846,7 +895,17 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
     break;
 
   default:
-    return;
+    if (spell->summon_mob) 
+      mob_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_mob, &rts_code);
+    else
+      return;
+
+    pfail = 0;
+    if (spell->summon_req) {
+      obj_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_req, &rts_code);
+      if (!mag_materials(ch, obj_num, NOTHING, NOTHING, TRUE, TRUE))
+        pfail = 102;
+    }
   }
 
   if (AFF_FLAGGED(ch, AFF_CHARM)) {

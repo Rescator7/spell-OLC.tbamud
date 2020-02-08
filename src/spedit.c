@@ -97,6 +97,7 @@ int is_apply_set(struct str_spells *spell)
 
 int is_summon_set(struct str_spells *spell)
 {
+ return spell->summon_mob ? 1 : 0;
 }
 
 int is_objects_set(struct str_spells *spell)
@@ -436,54 +437,66 @@ void spedit_assignement_menu (struct descriptor_data *d) {
 }
 
 void spedit_show_warnings (struct descriptor_data *d) {
-  char buf[2048] = "";
+  const int bSIZE = 2048;
+  char buf[bSIZE];
+  int len = 0;
 
+  buf[0] = '\0';
   if (OLC_SPELL(d)->status != available)
-    strcat(buf, "Spell status is unavailable.\r\n");
+    len += snprintf(buf, bSIZE, "Spell status is unavailable.\r\n");
 
-  if (!is_assign_set(OLC_SPELL(d)))
-    strcat(buf, "Spell is not assigned to any classes.\r\n");
+  if ((len < bSIZE) && !is_assign_set(OLC_SPELL(d)))
+    len += snprintf(buf + len, bSIZE - len, "Spell is not assigned to any classes.\r\n");
 
-  if (!OLC_SPELL(d)->effectiveness)
-    strcat(buf, "Spell effectiveness is not set.\r\n");
+  if ((len < bSIZE) && !OLC_SPELL(d)->effectiveness)
+    len += snprintf(buf + len, bSIZE - len, "Spell effectiveness is not set.\r\n");
 
-  if (OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_DAMAGE))
-    strcat(buf, "Magic flags: MAG_DAMAGE is required because damages is set.\r\n");
+  if ((len < bSIZE) && OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_DAMAGE))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_DAMAGE is required. (Damages is set).\r\n");
 
-  if (OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_VIOLENT))
-    strcat(buf, "Magic flags: MAG_VIOLENT is required because damages is set.\r\n");
+  if ((len < bSIZE) && OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_VIOLENT))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_VIOLENT is required. (Damages is set).\r\n");
 
-  if (is_apply_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_AFFECTS))
-    strcat(buf, "Magic flags: MAG_AFFECTS is required because affects or applies are set.\r\n");
+  if ((len < bSIZE) && is_apply_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_AFFECTS))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_AFFECTS is required. (Affects and applies are set).\r\n");
 
-  if ((OLC_SPELL(d)->mag_flags & MAG_AFFECTS) && (OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
-    strcat(buf, "Magic flags: AFFECTS and UNAFFECTS are both set.\r\n");
+  if ((len < bSIZE) && (OLC_SPELL(d)->mag_flags & MAG_AFFECTS) && (OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: AFFECTS and UNAFFECTS are both set.\r\n");
 
-  if (is_objects_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_CREATIONS))
-    strcat(buf, "Magic flags: MAG_CREATIONS is required because create objects is set.\r\n");
+  if ((len < bSIZE) && is_objects_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_CREATIONS))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_CREATIONS is required. (Create objects is set).\r\n");
 
-  if (is_dispel_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
-    strcat(buf, "Magic flags: MAG_UNAFFECTS is required because dispell is set.\r\n");
+  if ((len < bSIZE) && is_dispel_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_UNAFFECTS is required. (Dispell is set).\r\n");
   
-  if (is_points_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_POINTS))
-    strcat(buf, "Magic flags: MAG_POINTS is required because points is set.\r\n");
+  if ((len < bSIZE) && is_points_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_POINTS))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_POINTS is required. (Points is set).\r\n");
+
+  if ((len < bSIZE) && is_summon_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_SUMMONS))
+    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_SUMMON is required. (Summon mobile is set).\r\n");
 
   if (*buf)
     send_to_char (d->character, "\r\n%s", buf);
+
+  if (len >= bSIZE) {
+    send_to_char (d->character, " *** OVERFLOW ***\r\n");
+    log("SYSERR: buffer overflow from spedit_show_warnings.");
+  }
 }
 
 void spedit_show_messages(struct descriptor_data *d) {
   char buf[2048];
 
-  snprintf (buf, sizeof(buf), "\r\n1) Wear off  : %s\r\n"
-                              "2) To self   : %s\r\n"
-                              "3) To victim : %s\r\n"
-                              "4) To room   : %s\r\n" 
-                              "\r\nEnter choice (0 to quit) : ",
-                              EMPTY_STR(OLC_SPELL(d)->messages.wear_off),
-                              EMPTY_STR(OLC_SPELL(d)->messages.to_self),
-                              EMPTY_STR(OLC_SPELL(d)->messages.to_vict),
-                              EMPTY_STR(OLC_SPELL(d)->messages.to_room));
+  snprintf (buf, sizeof(buf), "\r\n%s1%s) Wear off  : %s%s\r\n"
+                              "%s2%s) To self   : %s%s\r\n"
+                              "%s3%s) To victim : %s%s\r\n"
+                              "%s4%s) To room   : %s%s\r\n" 
+                              "\r\n%sEnter choice (0 to quit) : ",
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->messages.wear_off),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->messages.to_self),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->messages.to_vict),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->messages.to_room),
+                              nrm);
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_MESSAGES;
@@ -492,13 +505,14 @@ void spedit_show_messages(struct descriptor_data *d) {
 void spedit_show_objects(struct descriptor_data *d) {
   char buf[2048];
 
-  snprintf (buf, sizeof(buf), "\r\n1) Object : %s\r\n"
-                              "2) Object : %s\r\n"
-                              "3) Object : %s\r\n"
-                              "\r\nEnter choice (0 to quit) : ",
-                              EMPTY_STR(OLC_SPELL(d)->objects[0]),
-                              EMPTY_STR(OLC_SPELL(d)->objects[1]),
-                              EMPTY_STR(OLC_SPELL(d)->objects[2]));
+  snprintf (buf, sizeof(buf), "\r\n%s1%s) Object : %s%s\r\n"
+                              "%s2%s) Object : %s%s\r\n"
+                              "%s3%s) Object : %s%s\r\n"
+                              "\r\n%sEnter choice (0 to quit) : ",
+                              grn, nrm, cyn,EMPTY_STR(OLC_SPELL(d)->objects[0]),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->objects[1]),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->objects[2]),
+                              nrm);
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_OBJECTS;
@@ -507,13 +521,14 @@ void spedit_show_objects(struct descriptor_data *d) {
 void spedit_show_dispel(struct descriptor_data *d) {
   char buf[2048];
 
-  snprintf (buf, sizeof(buf), "\r\n1) Spell : %s\r\n"
-                              "2) Spell : %s\r\n"
-                              "3) Spell : %s\r\n"
-                              "\r\nEnter choice (0 to quit) : ",
-                              EMPTY_STR(OLC_SPELL(d)->dispel[0]),
-                              EMPTY_STR(OLC_SPELL(d)->dispel[1]),
-                              EMPTY_STR(OLC_SPELL(d)->dispel[2]));
+  snprintf (buf, sizeof(buf), "\r\n%s1%s) Spell : %s%s\r\n"
+                              "%s2%s) Spell : %s%s\r\n"
+                              "%s3%s) Spell : %s%s\r\n"
+                              "\r\n%sEnter choice (0 to quit) : ",
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->dispel[0]),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->dispel[1]),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->dispel[2]),
+                              nrm);
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_DISPEL;
@@ -522,18 +537,33 @@ void spedit_show_dispel(struct descriptor_data *d) {
 void spedit_show_points(struct descriptor_data *d) {
   char buf[2048];
   
-  snprintf (buf, sizeof(buf), "\r\n1) Hit points  : %s\r\n"
-                              "2) Mana points : %s\r\n"
-                              "3) Move points : %s\r\n"
-                              "4) Gold        : %s\r\n"
-                              "\r\n Enter choice (0 to quit) : ",
-                              EMPTY_STR(OLC_SPELL(d)->points.hp),
-                              EMPTY_STR(OLC_SPELL(d)->points.mana),
-                              EMPTY_STR(OLC_SPELL(d)->points.move),
-                              EMPTY_STR(OLC_SPELL(d)->points.gold));
+  snprintf (buf, sizeof(buf), "\r\n%s1%s) Hit points  : %s%s\r\n"
+                              "%s2%s) Mana points : %s%s\r\n"
+                              "%s3%s) Move points : %s%s\r\n"
+                              "%s4%s) Gold        : %s%s\r\n"
+                              "\r\n%sEnter choice (0 to quit) : ",
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->points.hp),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->points.mana),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->points.move),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->points.gold),
+                              nrm);
 
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_SHOW_POINTS;
+}
+
+void spedit_show_mobile(struct descriptor_data *d) {
+  char buf[2048];
+
+  snprintf (buf, sizeof(buf), "\r\n%s1%s) Mobile      : %s%s\r\n"
+                              "%s2%s) Item needed : %s%s\r\n"
+                              "\r\n%sEnter choice (0 to quit) : ",
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->summon_mob),
+                              grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->summon_req),
+                              nrm);
+
+  send_to_char (d->character, "%s", buf);
+  OLC_MODE(d) = SPEDIT_SHOW_MOBILE;
 }
 
 void spedit_main_menu (struct descriptor_data *d) {
@@ -570,7 +600,7 @@ void spedit_main_menu (struct descriptor_data *d) {
                 "%sA%s) %sMenu -> Applies & Affects\r\n"
                 "%sD%s) %sMenu -> Dispells\r\n"
                 "%sO%s) %sMenu -> Create objects\r\n"
-                "%sX%s) %sMenu -> Summon mobiles\r\n"
+                "%sX%s) %sMenu -> Summon mobile\r\n"
                 "%sS%s) %sMenu -> Script\r\n" 
                 "%sC%s) %sMenu -> Classes\r\n"
                 "%sM%s) %sMenu -> Messages\r\n"
@@ -624,6 +654,9 @@ void spedit_empty_spell (struct str_spells *spell) {
   SAFE_FREE(spell->points.mana);
   SAFE_FREE(spell->points.move);
   SAFE_FREE(spell->points.gold);
+
+  SAFE_FREE(spell->summon_mob);
+  SAFE_FREE(spell->summon_req);
 
   for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
     SAFE_FREE(spell->protfrom[i].duration);
@@ -683,6 +716,8 @@ void spedit_copyover_spell (struct str_spells *from, struct str_spells *to)
   to->damages = STRDUP(from->damages);
   to->delay = STRDUP(from->delay);
   to->script = STRDUP(from->script);
+  to->summon_mob = STRDUP(from->summon_mob);
+  to->summon_req = STRDUP(from->summon_req);
 
   to->messages.wear_off = STRDUP(from->messages.wear_off);
   to->messages.to_self = STRDUP(from->messages.to_self);
@@ -763,6 +798,8 @@ void spedit_init_new_spell (struct str_spells *spell)
  spell->damages  = NULL;
  spell->delay    = NULL;
  spell->script   = NULL;
+ spell->summon_mob = NULL;
+ spell->summon_req = NULL;
 
  spell->messages.wear_off = NULL;
  spell->messages.to_self = NULL;
@@ -911,8 +948,20 @@ void boot_spells (void)
               if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                  buf[strlen(buf)-1] = '\0';
                  Q->messages.to_room = strdup (buf);
-               }
-               break;
+              }
+              break;
+      case DB_CODE_SUMMON_MOB:
+              if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                 buf[strlen(buf)-1] = '\0';
+                 Q->summon_mob = strdup (buf);
+              }
+              break;
+      case DB_CODE_SUMMON_REQ:
+              if (fgets (buf, MAX_STRING_LENGTH, fp)) {
+                 buf[strlen(buf)-1] = '\0';
+                 Q->summon_req = strdup (buf);
+              }
+              break;
       case DB_CODE_DISPEL_1 : 
       case DB_CODE_DISPEL_2 : 
       case DB_CODE_DISPEL_3 : 
@@ -1101,6 +1150,16 @@ void spedit_save_to_disk (void)
 
    if (r->messages.to_room) {
      snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_TO_ROOM, r->messages.to_room);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->summon_mob) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SUMMON_MOB, r->summon_mob);
+     fprintf(fp, "%s", buf);
+   }
+
+   if (r->summon_req) {
+     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SUMMON_REQ, r->summon_req);
      fprintf(fp, "%s", buf);
    }
 
@@ -1332,9 +1391,9 @@ int spedit_setup (struct descriptor_data *d)
 }
 
 void spedit_parse (struct descriptor_data *d, char *arg) {
-  const char *points[] = { "Hit points =+ ",
-                           "Mana points =+ ",
-                           "Move points =+ ",
+  const char *points[] = { "Hit points += ",
+                           "Mana points += ",
+                           "Move points += ",
                            "Gold += " }; 
   char buf[2048];
 
@@ -1716,6 +1775,35 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                              } 
                              spedit_show_points (d);
                              return;
+    case SPEDIT_GET_MOBILE : if (*arg)
+                               value = formula_interpreter (d->character,
+                                          d->character, OLC_NUM(d), FALSE,
+                                          arg, &rts_code);
+                             if (!arg || !rts_code) {
+                               switch (OLC_VAL(d)) {
+                                 case 0 : SAFE_FREE(OLC_SPELL(d)->summon_mob);
+                                          OLC_SPELL(d)->summon_mob = NULL;
+                                          if (*arg) OLC_SPELL(d)->summon_mob = strdup(arg);
+                                          break;
+                                 case 1 : SAFE_FREE(OLC_SPELL(d)->summon_req);
+                                          OLC_SPELL(d)->summon_req = NULL;
+                                          if (*arg) OLC_SPELL(d)->summon_req = strdup(arg);
+                               }
+                             }
+                             spedit_show_mobile (d);
+                             return;
+    case SPEDIT_SHOW_MOBILE :
+         if (!(x = atoi(arg))) break;
+         if ((x < 0) || (x > 2)) {
+           send_to_char (d->character, "Invalid choice!\r\n");
+           spedit_show_mobile(d);
+           return;
+         }
+         if (x == 1) send_to_char(d->character, "Mobile : ");
+         else        send_to_char(d->character, "Item   : ");
+         OLC_VAL(d) = x - 1;
+         OLC_MODE(d) = SPEDIT_GET_MOBILE;
+         return;
     case SPEDIT_SHOW_OBJECTS :
          if (!(x = atoi(arg))) break;
          if ((x < 0) || (x > MAX_SPELL_OBJECTS)) {
@@ -1813,6 +1901,9 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                      return;
           case 'o' :
           case 'O' : spedit_show_objects (d);
+                     return;
+          case 'x' :
+          case 'X' : spedit_show_mobile (d);
                      return;
           case 's' :
           case 'S' : page_string (d, OLC_SPELL(d)->script, 1);

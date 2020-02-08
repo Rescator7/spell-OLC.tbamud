@@ -917,8 +917,12 @@ static void do_stat_character(struct char_data *ch, struct char_data *k)
     for (aff = k->affected; aff; aff = aff->next) {
       send_to_char(ch, "SPL: (%3dhr) %s%-21s%s ", aff->duration + 1, CCCYN(ch, C_NRM), get_spell_name(aff->spell), CCNRM(ch, C_NRM));
 
-      if (aff->modifier)
-	send_to_char(ch, "%+d to %s", aff->modifier, apply_types[(int) aff->location]);
+      if (aff->modifier) {
+        if (!IS_SET_AR(AFF_FLAGS(k), AFF_PROTECT))
+	  send_to_char(ch, "%+d to %s", aff->modifier, apply_types[(int) aff->location]);
+        else
+          send_to_char(ch, "%%%d resist spell (%d): '%s'", aff->modifier, aff->location, get_spell_name(aff->location));
+      }
 
       if (aff->bitvector[0] || aff->bitvector[1] || aff->bitvector[2] || aff->bitvector[3]) {
         if (aff->modifier)

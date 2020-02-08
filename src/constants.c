@@ -992,7 +992,8 @@ const char *mag_flags[] =
 "ROOMS",
 "VIOLENT",
 "ACCDUR",
-"ACCMOD" 
+"ACCMOD",
+"PROTECTION"
 };
 
 /* --- End of constants arrays. --- */

@@ -433,6 +433,8 @@ extern const char *nrm, *grn, *cyn, *yel, *YEL, *bln, *red;
 #define SPEDIT_GET_DISPEL               35
 #define SPEDIT_SHOW_POINTS              36
 #define SPEDIT_GET_POINTS               37
+#define SPEDIT_SHOW_MOBILE              38
+#define SPEDIT_GET_MOBILE               39
 
 int  save_config( IDXTYPE nowhere );
 
