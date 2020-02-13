@@ -29,33 +29,8 @@
 #include "spedit.h"
 
 /* locally defined functions of local (file) scope */
-static int compare_spells(const void *x, const void *y);
 static const char *how_good(int percent);
 static void npc_steal(struct char_data *ch, struct char_data *victim);
-
-/* Special procedures for mobiles. */
-static int spell_sort_info[MAX_SKILLS + 1];
-
-
-
-static int compare_spells(const void *x, const void *y)
-{
-  int	a = *(const int *)x,
-	b = *(const int *)y;
-
-  return strcmp(spell_info[a].name, spell_info[b].name);
-}
-
-void sort_spells(void)
-{
-  int a;
-
-  /* initialize array, avoiding reserved. */
-  for (a = 1; a <= MAX_SKILLS; a++)
-    spell_sort_info[a] = a;
-
-  qsort(&spell_sort_info[1], MAX_SKILLS, sizeof(int), compare_spells);
-}
 
 static const char *how_good(int percent)
 {
@@ -81,11 +56,6 @@ static const char *how_good(int percent)
   return " (superb)";
 }
 
-static const char *prac_types[] = {
-  "spell",
-  "skill"
-};
-
 #define LEARNED_LEVEL	0	/* % known which is considered "learned" */
 #define MAX_PER_PRAC	1	/* max percent gain in skill per practice */
 #define MIN_PER_PRAC	2	/* min percent gain in skill per practice */
@@ -94,7 +64,6 @@ static const char *prac_types[] = {
 #define LEARNED(ch) (prac_params[LEARNED_LEVEL][(int)GET_CLASS(ch)])
 #define MINGAIN(ch) (prac_params[MIN_PER_PRAC][(int)GET_CLASS(ch)])
 #define MAXGAIN(ch) (prac_params[MAX_PER_PRAC][(int)GET_CLASS(ch)])
-#define SPLSKL(ch) (prac_types[prac_params[PRAC_TYPE][(int)GET_CLASS(ch)]])
 
 void list_skills(struct char_data *ch)
 {
@@ -141,37 +110,11 @@ void list_skills(struct char_data *ch)
   page_string(ch->desc, buf, TRUE);
 }
 
-/*
-void list_skills(struct char_data *ch)
-{
-  const char *overflow = "\r\n**OVERFLOW**\r\n";
-  int i, sortpos, ret;
-  size_t len = 0;
-  char buf2[MAX_STRING_LENGTH];
-
-  len = snprintf(buf2, sizeof(buf2), "You have %d practice session%s remaining.\r\n"
-	"You know of the following %ss:\r\n", GET_PRACTICES(ch),
-	GET_PRACTICES(ch) == 1 ? "" : "s", SPLSKL(ch));
-
-  for (sortpos = 1; sortpos <= MAX_SKILLS; sortpos++) {
-    i = spell_sort_info[sortpos];
-    if (GET_LEVEL(ch) >= spell_info[i].min_level[(int) GET_CLASS(ch)]) {
-    ret = snprintf(buf2 + len, sizeof(buf2) - len, "%-20s %s\r\n", spell_info[i].name, how_good(GET_SKILL(ch, i)));
-      if (ret < 0 || len + ret >= sizeof(buf2))
-        break;
-      len += ret;
-    }
-  }
-  if (len >= sizeof(buf2))
-    strcpy(buf2 + sizeof(buf2) - strlen(overflow) - 1, overflow); // strcpy: OK 
-
-  page_string(ch->desc, buf2, TRUE);
-}
-*/
-
 SPECIAL(guild)
 {
-  int skill_num, percent;
+  struct str_spells *spell = NULL;
+
+  int skill_num, percent, level;
 
   if (IS_NPC(ch) || !CMD_IS("practice"))
     return (FALSE);
@@ -188,10 +131,18 @@ SPECIAL(guild)
   }
 
   skill_num = find_skill_num(argument);
+  if (skill_num != -1)
+    spell = get_spell_by_vnum(skill_num);
 
-  if (skill_num < 1 ||
-      GET_LEVEL(ch) < spell_info[skill_num].min_level[(int) GET_CLASS(ch)]) {
-    send_to_char(ch, "You do not know of that %s.\r\n", SPLSKL(ch));
+  if (!spell) {
+    log("SYSERR: spell not found '%s' at the guild.", argument);
+    send_to_char(ch, "'%s' doesn't exists.\r\n", argument);
+    return (TRUE);
+  }
+  level = get_spell_level_by_vnum(skill_num, GET_CLASS(ch));
+
+  if ((skill_num < 1) || (level == -1) || (GET_LEVEL(ch) < level)) {
+    send_to_char(ch, "You do not know of that %s.\r\n", spell->type == SPELL ? "spell" : "skill");
     return (TRUE);
   }
   if (GET_SKILL(ch, skill_num) >= LEARNED(ch)) {

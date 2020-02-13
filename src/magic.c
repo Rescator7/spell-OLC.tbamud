@@ -368,7 +368,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
              af[i].location = spell->applies[i].appl_num;
              af[i].modifier = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].modifier, &rts_code);
            } else {
-               af[i].location = spell->applies[i].appl_num; // remove if
+               af[i].location = spell->applies[i].appl_num; 
 
                affect = get_spell_apply(spell, i);
                SET_BIT_AR(af[i].bitvector, affect - NUM_APPLIES);

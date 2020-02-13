@@ -1,6 +1,9 @@
 #ifndef SPEDIT_FORMULA
 #define SPEDIT_FORMULA
 
+int formula_interpreter (struct char_data *self, struct char_data *vict,
+                         int spell_vnum, int syserr, char *cmd, int *rts_code);
+
 #define CODE_SPACE         0     /* a space      */
 #define CODE_LOG_AND       1     /* logical      */  
 #define CODE_LOG_OR        2  
@@ -83,68 +86,6 @@
                             (x) == CODE_ART_DICE ? 'A' : \
                             (x) >= CODE_VAR_FIRST ? 'z' : \
                             (x) -  CODE_LOG_AND   + 'a') 
-
-const char *list_codes[] = {
-   " ",             /* 00 */
-   "&&",            /* 01 (a) */
-   "||",            /* 02 (b) */
-   ">=",            /* 03 (c) */
-   ">",             /* 04 (d) */
-   "<=",            /* 05 (e) */
-   "<",             /* 06 (f) */
-   "==",            /* 07 (g) */
-   "!=",            /* 08 (h) */
-   "!",             /* 09 (i) */
-   "^",             /* 10 (j) */
-   "&",             /* 11 (k) */
-   "|",             /* 12 (l) */
-   "-",             /* 13 (m) */
-   "+",             /* 14 (n) */
-   "/",             /* 15 (o) */
-   "*",             /* 16 (p) */
-   "(",             /* 17 (q) */
-   ")",             /* 18 (r) */
-   "?",             /* 19 (s) */
-   ":",             /* 20 (t) */
-   "RAND(",         /* 21 (u) */
-   "SELF.",         /* 22 (v) */
-   "VICT.",         /* 23 (w) */
-   "%",             /* 24 (x) */
-                    /*    (y) (reserved for digit) */
-   "STR",           /* 25 (z) */
-   "DEX",           /* 26 (z) */ 
-   "INT",           /* 27 (z) */
-   "WIS",           /* 28 (z) */
-   "CON",           /* 29 (z) */
-   "CHA",           /* 30 (z) */
-   "CLASS",         /* 31 (z) */
-   "LEVEL",         /* 32 (z) */
-   "AGE",           /* 33 (z) */
-   "WEIGHT",        /* 34 (z) */
-   "HEIGHT",        /* 35 (z) */
-   "MAXMANA",       /* 36 (z) */
-   "MAXHIT",        /* 37 (z) */
-   "MAXMOVE",       /* 38 (z) */
-   "GOLD",          /* 39 (z) */
-   "EXP",           /* 40 (z) */
-   "ARMOR",         /* 41 (z) */
-   "HITROLL",       /* 42 (z) */ 
-   "DAMROLL",       /* 43 (z) */
-   "SAVPARA",       /* 44 (z) */ 
-   "SAVROD",        /* 45 (z) */
-   "SAVPETRI",      /* 46 (z) */ 
-   "SAVBREATH",     /* 47 (z) */
-   "SAVSPELL",      /* 48 (z) */
-   "HIT",           /* 49 (z) */
-   "MANA",          /* 50 (z) */
-   "MOVE",          /* 51 (z) */
-   "GOOD",          /* 52 (z) */
-   "NEUTRAL",       /* 53 (z) */
-   "EVIL",          /* 54 (z) */
-   "DICE(",         /* 55 (A) */
-   ",",             /* 56 (B) */
-   "\n"
-};
 
 struct formula {
   int    command;

@@ -11,39 +11,18 @@
 #include "modify.h"
 #include "screen.h"
 #include "spedit.h"
+#include "constants.h"
+#include "class.h"
 
 #define EMPTY_STR(str) ((str) ? (str) : "<empty>")
 #define NULL_STR(str) ((str) ? (str) : "")
 #define STRDUP(str)  ((str) ? (strdup(str)) : NULL)
 #define SAFE_FREE(str) if(str) free(str)
+#define BUFSIZE 2048
 
-void cleanup_olc (struct descriptor_data *d, byte cleanup_type);
-extern const char *apply_types[];
-extern const char *affected_bits[];
-extern const char *pc_class_types[];
-extern const char *targ_flags[];
-extern const char *mag_flags[];
-extern const char *position_types[];
-extern struct descriptor_data *descriptor_list;
-int is_abbrev (const char *arg1, const char *arg2);
-int formula_interpreter (struct char_data *self, struct char_data *vict, int spell_vnum,
-                         int syserr, char *cmd, int *rts_code);
 struct str_spells *list_spells = NULL;
-int last_vnum = 0;
 
 char *UNDEF_SPELL = "Undefined";
-
-/* will convert a string to upper case... but, not stuff in quote " " */
-void strxupr (char *str) {
-  int i, quote = 0;
-
-  for (i=0; i<strlen(str); i++)
-    if (str[i] == '\"') 
-      quote ^= 1;
-    else
-      if (!quote)
-        str[i] = toupper(str[i]); 
-}
 
 int IS_SPELL_CLASS(struct str_spells *spell, int class) {
   int i;
@@ -54,7 +33,10 @@ int IS_SPELL_CLASS(struct str_spells *spell, int class) {
   return 0;
 }
 
-char *IS_SPELL_OLCING (int vnum) 
+// return a pointer on the player's name that is editing the spell vnum, or NULL if not edited.
+// The name will be used to says: Spell is edited by: <name>.
+// but, it can also be used to check if a SPELL VNUM is edited. Even, if we don't needs the name.
+char *SPELL_OLCING_BY (int vnum) 
 {
  struct descriptor_data *q;
 
@@ -140,6 +122,26 @@ int is_messages_set(struct str_spells *spell)
   return 0;
 }
 
+int find_spell_assign (struct char_data *ch, struct str_spells *ptr)
+{
+ int i;
+ 
+ for (i=0; i<NUM_CLASSES; i++)
+   if (ptr->assign[i].class_num == GET_CLASS(ch))
+     return i;
+ return -1;
+}
+
+char *get_spell_wear_off (int vnum) 
+{
+ struct str_spells *Q;
+
+ for (Q = list_spells; Q; Q=Q->next)
+   if (Q->vnum == vnum)
+     return (Q->messages.wear_off);
+ return NULL;
+}
+
 int get_spell_apply(struct str_spells *spell, int pos)
 {
  if ((pos < 0) || (pos > MAX_SPELL_AFFECTS - 1))
@@ -207,6 +209,7 @@ struct str_spells *get_spell_by_vnum(int vnum)
   return NULL;
 }
 
+// check all the assigned classes.
 int get_spell_level_by_vnum(int vnum, int class)
 {
  int i;
@@ -217,7 +220,7 @@ int get_spell_level_by_vnum(int vnum, int class)
      if (spell->assign[i].class_num == class)
        return spell->assign[i].level;
  }
- return 0;
+ return -1;
 }
 
 struct str_spells *get_spell_by_name(char *name, char type)
@@ -282,7 +285,7 @@ char *spedit_list_mag_flags (int flags) {
   else {
     buf[0] = '\0';
     for (i=0; i<NUM_MAG; i++)
-      if (flags & (1 << i))
+      if (flags & (1 << i)) 
         sprintf (buf, "%s%s ", buf, mag_flags [i]);
   }
   return (strdup (buf));
@@ -475,6 +478,9 @@ void spedit_show_warnings (struct descriptor_data *d) {
   if ((len < bSIZE) && is_summon_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_SUMMONS))
     len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_SUMMON is required. (Summon mobile is set).\r\n");
 
+  if ((len < bSIZE) && OLC_SPELL(d)->damages && !OLC_SPELL(d)->max_dam)
+    len += snprintf(buf + len, bSIZE - len, "Damages is set, but max damages is set to 0.\r\n");
+
   if (*buf)
     send_to_char (d->character, "\r\n%s", buf);
 
@@ -503,9 +509,9 @@ void spedit_show_messages(struct descriptor_data *d) {
 }
 
 void spedit_show_objects(struct descriptor_data *d) {
-  char buf[2048];
+  char buf[BUFSIZE];
 
-  snprintf (buf, sizeof(buf), "\r\n%s1%s) Object : %s%s\r\n"
+  snprintf (buf, BUFSIZE, "\r\n%s1%s) Object : %s%s\r\n"
                               "%s2%s) Object : %s%s\r\n"
                               "%s3%s) Object : %s%s\r\n"
                               "\r\n%sEnter choice (0 to quit) : ",
@@ -519,9 +525,9 @@ void spedit_show_objects(struct descriptor_data *d) {
 }
 
 void spedit_show_dispel(struct descriptor_data *d) {
-  char buf[2048];
+  char buf[BUFSIZE];
 
-  snprintf (buf, sizeof(buf), "\r\n%s1%s) Spell : %s%s\r\n"
+  snprintf (buf, BUFSIZE, "\r\n%s1%s) Spell : %s%s\r\n"
                               "%s2%s) Spell : %s%s\r\n"
                               "%s3%s) Spell : %s%s\r\n"
                               "\r\n%sEnter choice (0 to quit) : ",
@@ -535,9 +541,9 @@ void spedit_show_dispel(struct descriptor_data *d) {
 }
 
 void spedit_show_points(struct descriptor_data *d) {
-  char buf[2048];
+  char buf[BUFSIZE];
   
-  snprintf (buf, sizeof(buf), "\r\n%s1%s) Hit points  : %s%s\r\n"
+  snprintf (buf, BUFSIZE, "\r\n%s1%s) Hit points  : %s%s\r\n"
                               "%s2%s) Mana points : %s%s\r\n"
                               "%s3%s) Move points : %s%s\r\n"
                               "%s4%s) Gold        : %s%s\r\n"
@@ -553,9 +559,9 @@ void spedit_show_points(struct descriptor_data *d) {
 }
 
 void spedit_show_mobile(struct descriptor_data *d) {
-  char buf[2048];
+  char buf[BUFSIZE];
 
-  snprintf (buf, sizeof(buf), "\r\n%s1%s) Mobile      : %s%s\r\n"
+  snprintf (buf, BUFSIZE, "\r\n%s1%s) Mobile      : %s%s\r\n"
                               "%s2%s) Item needed : %s%s\r\n"
                               "\r\n%sEnter choice (0 to quit) : ",
                               grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->summon_mob),
@@ -567,7 +573,7 @@ void spedit_show_mobile(struct descriptor_data *d) {
 }
 
 void spedit_main_menu (struct descriptor_data *d) {
-  char buf[2048];
+  char buf[BUFSIZE];
 
   char *str_targ_flags;
   char *str_mag_flags;
@@ -585,7 +591,7 @@ void spedit_main_menu (struct descriptor_data *d) {
   send_to_char (d->character, "[H[J");
 #endif         
 
-  snprintf (buf, sizeof(buf), "%s-- %s Number      : [%s%5d%s] %s%s%s\r\n"
+  snprintf (buf, BUFSIZE, "%s-- %s Number      : [%s%5d%s] %s%s%s\r\n"
                 "%sT%s) Type              : [%s%-5s%s]\r\n"
                 "%s1%s) %sStatus            : %s%s\r\n"  
                 "%s2%s) Name              : %s%s\r\n"
@@ -610,7 +616,7 @@ void spedit_main_menu (struct descriptor_data *d) {
                  nrm, (Q->type == SPELL) ? "Spell" : "Skill", cyn, OLC_NUM(d), nrm, yel, Q->function ? "Special" : "", nrm,
                  prog ? red : grn, nrm, cyn, (Q->type == SPELL) ? "SPELL" : "SKILL", nrm,
                  grn, nrm, (Q->status == available) ? nrm : YEL, yel, (Q->status == available) ? "Available" : "Unavailable",
-                 prog ? red : grn, nrm, yel, Q->name ? Q->name : "Undefined", 
+                 prog ? red : grn, nrm, yel, Q->name ? Q->name : UNDEF_SPELL, 
                  prog ? red : grn, nrm, cyn, ((Q->min_pos >= 0) && (Q->min_pos < NUM_CHAR_POSITION)) ? 
                               position_types [Q->min_pos] : "<ILLEGAL>",   
                  prog ? red : grn, nrm, cyn, str_targ_flags,
@@ -857,7 +863,7 @@ int spedit_create_spell (struct descriptor_data *d)
  // if so we start from last VNUM + 1 and we search for the first
  // free VNUM that isn't OLCING by someone else.
  if (!OLC_NUM(d))
-   while (IS_SPELL_OLCING(++vnum));
+   while (SPELL_OLCING_BY(++vnum));
 
  if (vnum > MAX_SKILLS) {
    mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: Spedit: Skills and spells limits reached.");
@@ -873,7 +879,7 @@ int spedit_create_spell (struct descriptor_data *d)
    spedit_copyover_spell(q, OLC_SPELL(d));
  else {
    spedit_init_new_spell(OLC_SPELL(d));
-   OLC_SPELL(d)->name = strdup("Undefined");
+   OLC_SPELL(d)->name = strdup(UNDEF_SPELL);
  }
 
  return 1;
@@ -1073,8 +1079,8 @@ void boot_spells (void)
                   if (!Q->script)
                     Q->script = strdup (buf); 
                   else {
-                    snprintf (buf1, sizeof(buf1), "%s%s", Q->script, buf); 
-                    if (strlen(buf1) == sizeof(buf1)) 
+                    snprintf (buf1, BUFSIZE, "%s%s", Q->script, buf); 
+                    if (strlen(buf1) == BUFSIZE) 
                       log("SYSERR: boot spells: spell script buffer overflow"); 
                     free (Q->script);
                     Q->script = strdup (buf1);
@@ -1098,8 +1104,8 @@ void boot_spells (void)
 
 void spedit_save_to_disk (void)
 {
- char buf[2048] = "";  
- char buf1[2048] = "";
+ char buf[BUFSIZE] = "";  
+ char buf1[BUFSIZE] = "";
  char outbuf[MAX_STRING_LENGTH] = "";
 
  FILE *fp;
@@ -1119,212 +1125,212 @@ void spedit_save_to_disk (void)
  setbuf(fp, outbuf);
 
  for (r = list_spells; r; r = r->next) {
-   snprintf (buf, sizeof(buf), "%2d %c %d %d %d %d %d %d\n", DB_CODE_INIT_VARS,
-                                r->type, r->vnum, r->status, r->targ_flags, r->mag_flags, r->min_pos, r->max_dam);
+   snprintf (buf, BUFSIZE, "%2d %c %d %d %d %d %d %d\n", DB_CODE_INIT_VARS,
+                            r->type, r->vnum, r->status, r->targ_flags, r->mag_flags, r->min_pos, r->max_dam);
    fprintf(fp, "%s", buf);
  
    if (r->name) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_NAME, r->name);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_NAME, r->name);
      fprintf(fp, "%s", buf);
    }
 
    if (r->damages) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DAMAGES, r->damages);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_DAMAGES, r->damages);
      fprintf(fp, "%s", buf);
    }
 
    if (r->messages.wear_off) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_WEAR_OFF, r->messages.wear_off);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_MSG_WEAR_OFF, r->messages.wear_off);
      fprintf(fp, "%s", buf);
    }
 
    if (r->messages.to_self) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_TO_SELF, r->messages.to_self);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_MSG_TO_SELF, r->messages.to_self);
      fprintf(fp, "%s", buf);
    }
 
    if (r->messages.to_vict) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_TO_VICT, r->messages.to_vict);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_MSG_TO_VICT, r->messages.to_vict);
      fprintf(fp, "%s", buf);
    }
 
    if (r->messages.to_room) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_MSG_TO_ROOM, r->messages.to_room);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_MSG_TO_ROOM, r->messages.to_room);
      fprintf(fp, "%s", buf);
    }
 
    if (r->summon_mob) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SUMMON_MOB, r->summon_mob);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_SUMMON_MOB, r->summon_mob);
      fprintf(fp, "%s", buf);
    }
 
    if (r->summon_req) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SUMMON_REQ, r->summon_req);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_SUMMON_REQ, r->summon_req);
      fprintf(fp, "%s", buf);
    }
 
    if (r->dispel[0]) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DISPEL_1, r->dispel[0]);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_DISPEL_1, r->dispel[0]);
      fprintf(fp, "%s", buf);
    }
 
    if (r->dispel[1]) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DISPEL_2, r->dispel[1]);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_DISPEL_2, r->dispel[1]);
      fprintf(fp, "%s", buf);
    }
 
    if (r->dispel[2]) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DISPEL_3, r->dispel[2]);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_DISPEL_3, r->dispel[2]);
      fprintf(fp, "%s", buf);
    }
 
    if (r->objects[0]) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_OBJECTS_1, r->objects[0]);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_OBJECTS_1, r->objects[0]);
      fprintf(fp, "%s", buf);
    }
 
    if (r->objects[1]) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_OBJECTS_2, r->objects[1]);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_OBJECTS_2, r->objects[1]);
      fprintf(fp, "%s", buf);
    }
 
    if (r->objects[2]) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_OBJECTS_3, r->objects[2]);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_OBJECTS_3, r->objects[2]);
      fprintf(fp, "%s", buf);
    }
 
    if (r->points.hp) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_HP, r->points.hp);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_PTS_HP, r->points.hp);
      fprintf(fp, "%s", buf);
    }
 
    if (r->points.mana) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_MANA, r->points.mana);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_PTS_MANA, r->points.mana);
      fprintf(fp, "%s", buf);
    }
 
    if (r->points.move) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_MOVE, r->points.move);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_PTS_MOVE, r->points.move);
      fprintf(fp, "%s", buf);
    }
    if (r->points.gold) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_PTS_GOLD, r->points.gold);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_PTS_GOLD, r->points.gold);
      fprintf(fp, "%s", buf);
    }
 
    if (r->protfrom[0].prot_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_1, 
-                                  r->protfrom[0].prot_num, r->protfrom[0].duration, DB_CODE_MARKER, r->protfrom[0].resist);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_PROT_1, 
+                              r->protfrom[0].prot_num, r->protfrom[0].duration, DB_CODE_MARKER, r->protfrom[0].resist);
      fprintf(fp, "%s", buf);
    }
 
    if (r->protfrom[1].prot_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_2, 
-                                  r->protfrom[1].prot_num, r->protfrom[1].duration, DB_CODE_MARKER, r->protfrom[1].resist);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_PROT_2, 
+                              r->protfrom[1].prot_num, r->protfrom[1].duration, DB_CODE_MARKER, r->protfrom[1].resist);
      fprintf(fp, "%s", buf);
    }
 
    if (r->protfrom[2].prot_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_3,
-                                  r->protfrom[2].prot_num, r->protfrom[2].duration, DB_CODE_MARKER, r->protfrom[2].resist);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_PROT_3,
+                              r->protfrom[2].prot_num, r->protfrom[2].duration, DB_CODE_MARKER, r->protfrom[2].resist);
      fprintf(fp, "%s", buf);
    }
 
    if (r->protfrom[3].prot_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_4, 
-                                  r->protfrom[3].prot_num, r->protfrom[3].duration, DB_CODE_MARKER, r->protfrom[3].resist);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_PROT_4, 
+                              r->protfrom[3].prot_num, r->protfrom[3].duration, DB_CODE_MARKER, r->protfrom[3].resist);
      fprintf(fp, "%s", buf);
    }
 
    if (r->protfrom[4].prot_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_5, 
-                                  r->protfrom[4].prot_num, r->protfrom[4].duration, DB_CODE_MARKER, r->protfrom[4].resist);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_PROT_5, 
+                              r->protfrom[4].prot_num, r->protfrom[4].duration, DB_CODE_MARKER, r->protfrom[4].resist);
      fprintf(fp, "%s", buf);
    }
 
    if (r->protfrom[5].prot_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_PROT_6, 
-                                  r->protfrom[5].prot_num, r->protfrom[5].duration, DB_CODE_MARKER, r->protfrom[5].resist);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_PROT_6, 
+                              r->protfrom[5].prot_num, r->protfrom[5].duration, DB_CODE_MARKER, r->protfrom[5].resist);
      fprintf(fp, "%s", buf);
    }
 
    if (r->applies[0].appl_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_1, 
-                                  r->applies[0].appl_num, NULL_STR(r->applies[0].modifier), DB_CODE_MARKER, r->applies[0].duration);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_1, 
+                              r->applies[0].appl_num, NULL_STR(r->applies[0].modifier), DB_CODE_MARKER, r->applies[0].duration);
      fprintf(fp, "%s", buf);
    }
 
    if (r->applies[1].appl_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_2, 
-                                  r->applies[1].appl_num, NULL_STR(r->applies[1].modifier), DB_CODE_MARKER, r->applies[1].duration);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_2, 
+                              r->applies[1].appl_num, NULL_STR(r->applies[1].modifier), DB_CODE_MARKER, r->applies[1].duration);
      fprintf(fp, "%s", buf);
    }
 
    if (r->applies[2].appl_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_3, 
-                                  r->applies[2].appl_num, NULL_STR(r->applies[2].modifier), DB_CODE_MARKER, r->applies[2].duration);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_3, 
+                              r->applies[2].appl_num, NULL_STR(r->applies[2].modifier), DB_CODE_MARKER, r->applies[2].duration);
      fprintf(fp, "%s", buf);
    }
 
    if (r->applies[3].appl_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_4, 
-                                  r->applies[3].appl_num, NULL_STR(r->applies[3].modifier), DB_CODE_MARKER, r->applies[3].duration);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_4, 
+                              r->applies[3].appl_num, NULL_STR(r->applies[3].modifier), DB_CODE_MARKER, r->applies[3].duration);
      fprintf(fp, "%s", buf);
    }
 
    if (r->applies[4].appl_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_5, 
-                                  r->applies[4].appl_num, NULL_STR(r->applies[4].modifier), DB_CODE_MARKER, r->applies[4].duration);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_5, 
+                              r->applies[4].appl_num, NULL_STR(r->applies[4].modifier), DB_CODE_MARKER, r->applies[4].duration);
      fprintf(fp, "%s", buf);
    }
 
    if (r->applies[5].appl_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_6, 
-                                  r->applies[5].appl_num, NULL_STR(r->applies[5].modifier), DB_CODE_MARKER, r->applies[5].duration);
+     snprintf (buf, BUFSIZE, "%2d %d %s\n%2d %s\n", DB_CODE_AFFECTS_6, 
+                              r->applies[5].appl_num, NULL_STR(r->applies[5].modifier), DB_CODE_MARKER, r->applies[5].duration);
      fprintf(fp, "%s", buf);
    }
 
    if (r->assign[0].class_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_MU, 
-                                  r->assign[0].class_num, r->assign[0].level, NULL_STR(r->assign[0].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[0].num_mana));
+     snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_MU, 
+                              r->assign[0].class_num, r->assign[0].level, NULL_STR(r->assign[0].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[0].num_mana));
      fprintf(fp, "%s", buf);
    }
 
    if (r->assign[1].class_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_CL, 
-                                  r->assign[1].class_num, r->assign[1].level, NULL_STR(r->assign[1].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[1].num_mana));
+     snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_CL, 
+                              r->assign[1].class_num, r->assign[1].level, NULL_STR(r->assign[1].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[1].num_mana));
      fprintf(fp, "%s", buf);
    }
 
    if (r->assign[2].class_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_TH, 
-                                  r->assign[2].class_num, r->assign[2].level, NULL_STR(r->assign[2].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[2].num_mana));
+     snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_TH, 
+                              r->assign[2].class_num, r->assign[2].level, NULL_STR(r->assign[2].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[2].num_mana));
      fprintf(fp, "%s", buf);
    }
 
    if (r->assign[3].class_num != -1) {
-     snprintf (buf, sizeof(buf), "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_WA, 
-                                  r->assign[3].class_num, r->assign[3].level, NULL_STR(r->assign[3].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[3].num_mana));
+     snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_WA, 
+                              r->assign[3].class_num, r->assign[3].level, NULL_STR(r->assign[3].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[3].num_mana));
      fprintf(fp, "%s", buf);
    }
 
    if (r->effectiveness) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_EFFECTIVENESS, r->effectiveness);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_EFFECTIVENESS, r->effectiveness);
      fprintf(fp, "%s", buf);
    }
 
    if (r->delay) {
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_DELAY, r->delay);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_DELAY, r->delay);
      fprintf(fp, "%s", buf);
    }
 
    if (r->script) {
-     strncpy (buf1, r->script, sizeof(buf1)); 
+     strncpy (buf1, r->script, BUFSIZE); 
      p = strtok (buf1, "\n");
-     snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SCRIPT, p);
+     snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_SCRIPT, p);
      fprintf(fp, "%s", buf);
      while ((p=strtok('\0', "\n"))) {
-       snprintf (buf, sizeof(buf), "%2d %s\n", DB_CODE_SCRIPT, p);
+       snprintf (buf, BUFSIZE, "%2d %s\n", DB_CODE_SCRIPT, p);
        fprintf(fp, "%s", buf);
      }
    }
@@ -1353,7 +1359,7 @@ int spedit_setup2 (struct descriptor_data *d)
 
 int spedit_setup (struct descriptor_data *d)
 {
- char buf[2048];
+ char buf[BUFSIZE];
 
  char *str;
  int vnum;
@@ -1369,7 +1375,7 @@ int spedit_setup (struct descriptor_data *d)
      cleanup_olc (d, CLEANUP_ALL);
      return 0;
    } else {
-       if ((str = IS_SPELL_OLCING (vnum))) {
+       if ((str = SPELL_OLCING_BY (vnum))) {
          sprintf (buf, "This spell '%s' (vnum: %d) is already edited by %s.\r\n", get_spell_name(vnum), vnum, str);
          send_to_char (d->character, "%s", buf);  
          cleanup_olc (d, CLEANUP_ALL);
@@ -1395,7 +1401,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                            "Mana points += ",
                            "Move points += ",
                            "Gold += " }; 
-  char buf[2048];
+  char buf[BUFSIZE];
 
   int x = 0, value, rts_code = 0;
   struct str_spells *to;
@@ -1444,7 +1450,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                              return;
     case SPEDIT_GET_NAME   : SAFE_FREE(OLC_SPELL(d)->name);
                              OLC_SPELL(d)->name = 
-                               (arg && *arg) ? strdup(arg) : strdup("Undefined");
+                               (arg && *arg) ? strdup(arg) : strdup(UNDEF_SPELL);
                              break;
     case SPEDIT_GET_PROTDUR: value = formula_interpreter (d->character, 
                                      d->character, OLC_NUM(d), FALSE,
@@ -2011,7 +2017,7 @@ ACMD(do_splist) {
    search_by_part_name = 1;
 
 
- len = snprintf(buf, sizeof(buf), 
+ len = snprintf(buf, MAX_STRING_LENGTH, 
  "Index VNum    Name                 Type     Spec_Prog    Available   Classe(s)\r\n"
  "----- ------- ----                 ----     ---------    ---------   -----------\r\n");
  

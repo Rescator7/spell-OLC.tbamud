@@ -4,6 +4,9 @@
 #include "utils.h" 
 #include "db.h"
 #include "comm.h"
+#include "handler.h"
+#include "act.h"
+#include "formula.h"
 #include "code.h"
 #include "string.h"
 
@@ -66,6 +69,10 @@ char *strext (char *str1, char c)
  return (strdup (lbuf));
 }
 
+// SAY_TO_ROOM {"message"};
+// SAY_TO_SELF {"message"};
+// SAY_TO_CHAR {"message"};
+// SAY_TO_VICT {"message"};
 ASCRIPT(scr_act_to)
 {
  char *s;
@@ -79,17 +86,20 @@ ASCRIPT(scr_act_to)
  return TRUE;
 }  
 
+// TELEPORT {"where"};
+// where = vnum or mobile name
 ASCRIPT(scr_teleport)
 {
- int rts_code = TRUE, location;
+ int rts_code = TRUE;
  char *where;
+ room_vnum location;
 
- strlstr (str, "{");
- where = strext (*str, '}');
+ strlstr (str, "{\"");
+ where = strext (*str, '\"');
  *str += strlen (where);
- strlstr (str, "};");
+ strlstr (str, "\"};");
 
- if (((location = find_target_room (vict, where)) >= 0) && vict) {
+ if (((location = find_target_room (vict, where)) != NOWHERE) && vict) {
    char_from_room (vict);
    char_to_room (vict, location);
    if (!IS_NPC (vict))
@@ -100,23 +110,28 @@ ASCRIPT(scr_teleport)
  return (rts_code);
 }
 
+// LOAD_MOBILE {"mob, where"};
+// mob = mobile r_num
+// where = vnum or mobile name
 ASCRIPT(scr_load_mobile)
 {
  struct char_data *mob;
- int value, rts_code = TRUE, r_num, location;
+ int value, rts_code = TRUE;
  char *who, *where;
+ room_vnum location;
+ mob_rnum r_num;
 
- strlstr (str, "{");
+ strlstr (str, "{\"");
  who   = strext (*str, ',');
  *str += strlen (who);
  strlstr (str, ",");
- where = strext (*str, '}');
+ where = strext (*str, '\"');
  *str += strlen (where);
- strlstr (str, "};");
+ strlstr (str, "\"};");
 
  value = formula_interpreter (self, vict, from, TRUE, who, &rts_code);
- if (((r_num = real_mobile (value)) >= 0) &&
-     ((location = find_target_room (vict, where)) >= 0)) {
+ if (((r_num = real_mobile (value)) != NOBODY) &&
+     ((location = find_target_room (vict, where)) != NOWHERE)) {
    mob = read_mobile (r_num, REAL);
    char_to_room (mob, location);
  } else
@@ -130,8 +145,8 @@ ASCRIPT(scr_load_mobile)
 int perform_script (char *str, struct char_data *self, 
                                struct char_data *vict, 
                                struct obj_data  *ovict, 
-                    int    from,
-                    int    param)
+                    int   from,
+                    int   param)
 {
  int cpt = 0, ptr = 0, rts_code = FALSE;
  char *p, *b;

@@ -98,8 +98,12 @@
 #define SPELL_IDENTIFY               52 /* Reserved Skill[] DO NOT CHANGE */
 #define SPELL_FLY                    53 /* Reserved Skill[] DO NOT CHANGE */
 #define SPELL_DARKNESS               54
+/* To make an affect induced by dg_affect look correct on 'stat' we need to
+ * define it with a 'spellname'. */
+#define SPELL_DG_AFFECT              55
+
 /** Total Number of defined spells */
-#define NUM_SPELLS                   54
+#define NUM_SPELLS                   55
 
 /* Insert new spells here, up to MAX_SPELLS */
 #define MAX_SPELLS		    130
@@ -124,10 +128,6 @@
  * intended use is for spells and skills associated with objects (such as
  * SPELL_IDENTIFY used with scrolls of identify) or non-players (such as NPC
  * only spells). */
-
-/* To make an affect induced by dg_affect look correct on 'stat' we need to
- * define it with a 'spellname'. */
-#define SPELL_DG_AFFECT              298
 
 #define TOP_SPELL_DEFINE	     299
 /* NEW NPC/OBJECT SPELLS can be inserted here up to 299 */
@@ -296,7 +296,6 @@ int	cast_spell(struct char_data *ch, struct char_data *tch,
 
 /* other prototypes */
 void spell_level(int spell, int chclass, int level);
-void init_spell_levels(void);
 const char *skill_name(int num);
 
 /* From magic.c */

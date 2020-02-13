@@ -41,6 +41,7 @@
 #include <sys/stat.h>
 
 extern void spedit_free_memory();
+extern void create_build_in_spells();
 
 /*  declarations of most of the 'global' variables */
 struct config_data config_info; /* Game configuration list.	 */
@@ -457,7 +458,8 @@ void boot_world(void)
   index_boot(DB_BOOT_WLD);
 
   log("Assigning old spells.");
-  assign_spells();
+  create_build_in_spells();
+  //assign_spells();
 
   log("Loading spells.");
   boot_spells();
@@ -757,9 +759,6 @@ void boot_db(void)
     log("   Questmasters.");
     assign_the_quests();
   }
-
-  log("Assigning spell and skill levels.");
-  init_spell_levels();
 
   log("Sorting command list and spells.");
   sort_commands();

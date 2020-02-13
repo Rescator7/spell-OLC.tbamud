@@ -102,6 +102,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (3 * self.level)) > 15 ? (30 - (3 * self.level)) : 15");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 4;
@@ -129,6 +130,9 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
+ sprintf(buf, "(75 - (3 * self.level)) > 50 ? (75 - (3 * self.level)) : 50");
+ new_spell->assign[0].num_mana = strdup(buf);
 
  spedit_save_internally(new_spell);
 
@@ -143,6 +147,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_OBJ_INV;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ALTER_OBJS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(35 - (3 * self.level)) > 5 ? (35 - (3 * self.level)) : 5");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 5;
@@ -169,6 +174,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_NOT_SELF;
  new_spell->mag_flags = MAG_AFFECTS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(35 - (1 * self.level)) > 25 ? (35 - (1 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 9;
@@ -198,7 +204,8 @@ void create_build_in_spells()
  new_spell->type = SPELL;
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
- new_spell->mag_flags = MAG_DAMAGE;
+ new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (3 * self.level)) > 10 ? (30 - (3 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 5;
@@ -218,6 +225,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (3 * self.level)) > 25 ? (40 - (3 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 15;
@@ -238,6 +246,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_NOT_SELF;
  new_spell->mag_flags = MAG_MANUAL | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(75 - (2 * self.level)) > 50 ? (75 - (2 * self.level)) : 50");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 16;
@@ -257,6 +266,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT | MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (3 * self.level)) > 10 ? (30 - (3 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 3;
@@ -281,6 +291,8 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_IGNORE;
  new_spell->mag_flags = MAG_SUMMONS;
+ new_spell->effectiveness = strdup("100");
+ new_spell->summon_mob = strdup("10");
  sprintf(buf, "(80 - (5 * self.level)) > 65 ? (80 - (5 * self.level)) : 65");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 30;
@@ -299,6 +311,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (3 * self.level)) > 15 ? (30 - (3 * self.level)) : 15");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 11;
@@ -318,6 +331,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_IGNORE;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(75 - (5 * self.level)) > 25 ? (75 - (5 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 17;
@@ -336,6 +350,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_IGNORE;
  new_spell->mag_flags = MAG_CREATIONS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (4 * self.level)) > 5 ? (30 - (4 * self.level)) : 5");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 2;
@@ -356,6 +371,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_OBJ_INV | TAR_OBJ_EQUIP;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (4 * self.level)) > 5 ? (30 - (4 * self.level)) : 5");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 2;
@@ -374,6 +390,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_UNAFFECTS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (2 * self.level)) > 5 ? (30 - (2 * self.level)) : 5");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 4;
@@ -395,12 +412,13 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_POINTS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (2 * self.level)) > 10 ? (30 - (2 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 9;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("You feel a lot better!");
- // add healing here
+ new_spell->points.hp = strdup("dice(3, 8) + 3 + (level / 4)");
  spedit_save_internally(new_spell);
  
  // SPELL_CURE_LIGHT # 16
@@ -414,12 +432,13 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_POINTS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (2 * self.level)) > 10 ? (30 - (2 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 1;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("You feel better.");
- // add healing here
+ new_spell->points.hp = strdup("dice(1, 8) + 1 + (level / 4)");
  spedit_save_internally(new_spell);
 
  // SPELL_CURSE # 17
@@ -430,9 +449,10 @@ void create_build_in_spells()
  new_spell->status = available;
  new_spell->name = strdup("curse");
  new_spell->type = SPELL;
- new_spell->min_pos = POS_FIGHTING;
+ new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_OBJ_INV;
  new_spell->mag_flags = MAG_VIOLENT | MAG_AFFECTS | MAG_ACCDUR | MAG_ACCMOD | MAG_ALTER_OBJS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(80 - (2 * self.level)) > 50 ? (80 - (2 * self.level)) : 50");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 14;
@@ -460,6 +480,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_SELF_ONLY;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(20 - (2 * self.level)) > 10 ? (20 - (2 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 4;
@@ -482,6 +503,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_SELF_ONLY;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(20 - (2 * self.level)) > 10 ? (20 - (2 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 2;
@@ -507,6 +529,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_SELF_ONLY;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(20 - (2 * self.level)) > 10 ? (20 - (2 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 2;
@@ -514,7 +537,7 @@ void create_build_in_spells()
  new_spell->applies[0].appl_num = AFF_DETECT_MAGIC + NUM_APPLIES;
  new_spell->applies[0].duration = strdup("self.level + 12");
  new_spell->messages.to_vict = strdup("Your eyes tingle.");
- new_spell->messages.wear_off = strdup("You feel less aware.");
+ new_spell->messages.wear_off = strdup("The detect magic wears off.");
 
  spedit_save_internally(new_spell);
 
@@ -530,6 +553,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(15 - (1 * self.level)) > 5 ? (15 - (1 * self.level)) : 5");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 10;
@@ -552,6 +576,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (3 * self.level)) > 25 ? (40 - (3 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 14;
@@ -571,6 +596,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_IGNORE;
  new_spell->mag_flags = MAG_AREAS | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (3 * self.level)) > 25 ? (40 - (3 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 12;
@@ -591,6 +617,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_OBJ_INV;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(150 - (10 * self.level)) > 100 ? (150 - (10 * self.level)) : 100");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 26;
@@ -609,6 +636,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT | MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (1 * self.level)) > 25 ? (40 - (1 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 13;
@@ -628,6 +656,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (2 * self.level)) > 30 ? (40 - (2 * self.level)) : 30");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 15;
@@ -647,6 +676,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(75 - (3 * self.level)) > 45 ? (75 - (3 * self.level)) : 45");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 19;
@@ -666,6 +696,8 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_POINTS | MAG_UNAFFECTS;
+ new_spell->effectiveness = strdup("100");
+ new_spell->points.hp = strdup("100 + dice(3, 8)");
  sprintf(buf, "(60 - (3 * self.level)) > 40 ? (60 - (3 * self.level)) : 40");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 16;
@@ -684,6 +716,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ALTER_OBJS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(35 - (1 * self.level)) > 25 ? (35 - (1 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 4;
@@ -708,6 +741,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (1 * self.level)) > 15 ? (30 - (1 * self.level)) : 15");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 9;
@@ -728,6 +762,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_OBJ_WORLD;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(25 - (1 * self.level)) > 20 ? (25 - (1 * self.level)) : 20");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 6;
@@ -746,6 +781,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(25 - (3 * self.level)) > 10 ? (25 - (3 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 1;
@@ -765,6 +801,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_NOT_SELF | TAR_OBJ_INV;
  new_spell->mag_flags = MAG_VIOLENT | MAG_AFFECTS | MAG_ALTER_OBJS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(50 - (3 * self.level)) > 20 ? (50 - (3 * self.level)) : 20");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 14;
@@ -792,6 +829,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_SELF_ONLY;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (3 * self.level)) > 10 ? (40 - (3 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 8;
@@ -814,6 +852,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_EQUIP;
  new_spell->mag_flags = MAG_UNAFFECTS | MAG_ALTER_OBJS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(45 - (5 * self.level)) > 25 ? (45 - (5 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 26;
@@ -833,6 +872,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(110 - (5 * self.level)) > 85 ? (110 - (5 * self.level)) : 85");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 15;
@@ -856,6 +896,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (3 * self.level)) > 15 ? (30 - (3 * self.level)) : 15");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 7;
@@ -875,6 +916,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_AFFECTS | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (5 * self.level)) > 25 ? (40 - (5 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 8;
@@ -896,6 +938,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR | MAG_ACCMOD;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(35 - (1 * self.level)) > 30 ? (35 - (1 * self.level)) : 30");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 6;
@@ -920,6 +963,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_NOT_SELF;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(75 - (3 * self.level)) > 50 ? (75 - (3 * self.level)) : 50");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 10;
@@ -935,6 +979,7 @@ void create_build_in_spells()
  new_spell->status = available;
  new_spell->name = strdup("ventriloquate");
  new_spell->type = SPELL;
+ new_spell->effectiveness = strdup("100");
 
  spedit_save_internally(new_spell);
 
@@ -950,6 +995,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(20 - (2 * self.level)) > 10 ? (20 - (2 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 12;
@@ -968,6 +1014,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM;
  new_spell->mag_flags = MAG_UNAFFECTS | MAG_ALTER_OBJS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (4 * self.level)) > 8 ? (40 - (4 * self.level)) : 8");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 10;
@@ -988,6 +1035,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_SELF_ONLY;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(20 - (2 * self.level)) > 10 ? (20 - (2 * self.level)) : 10");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 18;
@@ -1010,7 +1058,10 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_OBJ_ROOM;
  new_spell->mag_flags = MAG_SUMMONS;
+ new_spell->effectiveness = strdup("100");
+ new_spell->summon_mob = strdup("11");
  sprintf(buf, "(35 - (3 * self.level)) > 10 ? (35 - (3 * self.level)) : 10");
+ new_spell->assign[0].num_mana = strdup(buf);
 
  spedit_save_internally(new_spell);
 
@@ -1025,6 +1076,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_FIGHT_VICT;
  new_spell->mag_flags = MAG_DAMAGE | MAG_VIOLENT;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (3 * self.level)) > 25 ? (40 - (3 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 14;
@@ -1044,6 +1096,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_IGNORE;
  new_spell->mag_flags = MAG_GROUPS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(50 - (2 * self.level)) > 30 ? (50 - (2 * self.level)) : 30");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 9;
@@ -1062,7 +1115,8 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_IGNORE;
  new_spell->mag_flags = MAG_GROUPS;
- sprintf(buf, "(80 - (5 * self.level)) > 60 ? (80 - (5 * self.level)) : 20");
+ new_spell->effectiveness = strdup("100");
+ sprintf(buf, "(80 - (5 * self.level)) > 60 ? (80 - (5 * self.level)) : 60");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 22;
  new_spell->assign[0].num_mana = strdup(buf);
@@ -1077,6 +1131,7 @@ void create_build_in_spells()
  new_spell->status = available;
  new_spell->name = strdup("group recall");
  new_spell->type = SPELL;
+ new_spell->effectiveness = strdup("100");
 
  spedit_save_internally(new_spell);
 
@@ -1092,9 +1147,13 @@ void create_build_in_spells()
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_SELF_ONLY;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
  sprintf(buf, "(25 - (1 * self.level)) > 10 ? (25 - (1 * self.level)) : 10");
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 3;
  new_spell->assign[0].num_mana = strdup(buf);
+ new_spell->assign[1].class_num = CLASS_CLERIC;
+ new_spell->assign[1].level = 7;
+ new_spell->assign[1].num_mana = strdup(buf);
  new_spell->applies[0].appl_num = AFF_INFRAVISION + NUM_APPLIES;
  new_spell->applies[0].duration = strdup("12 + self.level");
  new_spell->messages.to_vict = strdup("Your eyes glow red.");
@@ -1109,14 +1168,16 @@ void create_build_in_spells()
 
  new_spell->vnum = SPELL_WATERWALK;
  new_spell->status = available;
- new_spell->name = strdup("WATERWALK");
+ new_spell->name = strdup("waterwalk");
  new_spell->type = SPELL;
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (2 * self.level)) > 20 ? (40 - (2 * self.level)) : 20");
  new_spell->applies[0].appl_num = AFF_WATERWALK + NUM_APPLIES;
  new_spell->applies[0].duration = strdup("24");
+ new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("You feel webbing between your toes.");
  new_spell->messages.wear_off = strdup("Your feet seem less buoyant.");
 
@@ -1134,6 +1195,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM;
  new_spell->mag_flags = MAG_MANUAL;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(50 - (5 * self.level)) > 25 ? (50 - (5 * self.level)) : 25");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 20;
@@ -1155,6 +1217,7 @@ void create_build_in_spells()
  new_spell->min_pos = POS_FIGHTING;
  new_spell->targ_flags = TAR_CHAR_ROOM;
  new_spell->mag_flags = MAG_AFFECTS | MAG_ACCDUR;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(40 - (2 * self.level)) > 20 ? (40 - (2 * self.level)) : 20");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 22;
@@ -1177,9 +1240,11 @@ void create_build_in_spells()
  new_spell->min_pos = POS_STANDING;
  new_spell->targ_flags = TAR_IGNORE;
  new_spell->mag_flags = MAG_ROOMS;
+ new_spell->effectiveness = strdup("100");
  sprintf(buf, "(30 - (4 * self.level)) > 5 ? (30 - (4 * self.level)) : 5");
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 12;
+ new_spell->assign[0].num_mana = strdup(buf);
 
  spedit_save_internally(new_spell);
 
@@ -1193,6 +1258,7 @@ void create_build_in_spells()
  new_spell->name = strdup("backstab");
  new_spell->function = do_backstab;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_THIEF;
  new_spell->assign[0].level = 3;
 
@@ -1208,6 +1274,7 @@ void create_build_in_spells()
  new_spell->name = strdup("bash");
  new_spell->function = do_bash;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_WARRIOR;
  new_spell->assign[0].level = 12;
 
@@ -1222,6 +1289,7 @@ void create_build_in_spells()
  new_spell->name = strdup("hide");
  new_spell->function = do_hide;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_THIEF;
  new_spell->assign[0].level = 5;
 
@@ -1236,6 +1304,7 @@ void create_build_in_spells()
  new_spell->name = strdup("kick");
  new_spell->function = do_kick;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_WARRIOR;
  new_spell->assign[0].level = 1;
 
@@ -1249,7 +1318,8 @@ void create_build_in_spells()
  new_spell->status = available;
  new_spell->name = strdup("pick lock");
  new_spell->type = SKILL;
- new_spell->assign[0].class_num = CLASS_CLERIC;
+ new_spell->effectiveness = strdup("100");
+ new_spell->assign[0].class_num = CLASS_THIEF;
  new_spell->assign[0].level = 2;
 
  spedit_save_internally(new_spell);
@@ -1263,6 +1333,7 @@ void create_build_in_spells()
  new_spell->name = strdup("whirlwind");
  new_spell->function = do_whirlwind;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_WARRIOR;
  new_spell->assign[0].level = 16;
 
@@ -1277,6 +1348,7 @@ void create_build_in_spells()
  new_spell->name = strdup("rescue");
  new_spell->function = do_rescue;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_WARRIOR;
  new_spell->assign[0].level = 3;
 
@@ -1291,6 +1363,7 @@ void create_build_in_spells()
  new_spell->name = strdup("sneak");
  new_spell->function = do_sneak;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_THIEF;
  new_spell->assign[0].level = 1;
 
@@ -1305,6 +1378,7 @@ void create_build_in_spells()
  new_spell->name = strdup("steal");
  new_spell->function = do_steal;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_THIEF;
  new_spell->assign[0].level = 4;
 
@@ -1319,6 +1393,7 @@ void create_build_in_spells()
  new_spell->name = strdup("track");
  new_spell->function = do_track;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_THIEF;
  new_spell->assign[0].level = 6;
  new_spell->assign[1].class_num = CLASS_WARRIOR;
@@ -1335,8 +1410,23 @@ void create_build_in_spells()
  new_spell->name = strdup("bandage");
  new_spell->function = do_bandage;
  new_spell->type = SKILL;
+ new_spell->effectiveness = strdup("100");
  new_spell->assign[0].class_num = CLASS_WARRIOR;
  new_spell->assign[0].level = 7;
+
+ spedit_save_internally(new_spell);
+
+ // SPELL_DG_AFFECT # 298 
+ CREATE(new_spell, struct str_spells, 1);
+ spedit_init_new_spell (new_spell);
+
+ new_spell->vnum = SPELL_DG_AFFECT;
+ new_spell->status = available;
+ new_spell->name = strdup("script-inflicted");
+ new_spell->type = SPELL;
+ new_spell->min_pos = POS_SITTING;
+ new_spell->targ_flags = TAR_IGNORE;
+ new_spell->effectiveness = strdup("100");
 
  spedit_save_internally(new_spell);
 }

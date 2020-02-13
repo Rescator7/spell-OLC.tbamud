@@ -22,9 +22,6 @@
 #include "act.h"
 #include "fight.h"
 
-
-
-
 /* Special spells appear below. */
 ASPELL(spell_create_water)
 {

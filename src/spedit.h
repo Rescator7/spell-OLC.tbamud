@@ -57,14 +57,17 @@
 
 struct str_spells *get_spell_by_vnum(int vnum);
 struct str_spells *get_spell_by_name (char *name, char type);
+
 int formula_interpreter (struct char_data *self, struct char_data *vict,
                          int spell_vnum, int syserr, char *cmd, int *rts_code);
 int get_spell_level_by_vnum(int vnum, int class);
 int get_spell_apply(struct str_spells *spell, int pos);
+int find_spell_assign (struct char_data *ch, struct str_spells *ptr);
 int find_spell_by_vnum (int vnum);
-
-
+void spedit_init_new_spell (struct str_spells *spell);
+void spedit_save_internally (struct str_spells *spell);
 char *get_spell_name(int vnum);
+char *get_spell_wear_off (int vnum);
 char *get_spell_wear_off (int vnum);
 
 struct str_prot {

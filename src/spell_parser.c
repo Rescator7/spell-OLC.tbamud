@@ -12,6 +12,7 @@
 #include "sysdep.h"
 #include "structs.h"
 #include "utils.h"
+#include "config.h"
 #include "interpreter.h"
 #include "spells.h"
 #include "handler.h"
@@ -20,10 +21,7 @@
 #include "dg_scripts.h"
 #include "fight.h"  /* for hit() */
 #include "spedit.h"
-
-extern char *get_spell_name(int vnum);
-extern void call_ASPELL (void (*function) (), int level, struct char_data *ch,
-                         struct char_data *vict, struct obj_data *obj);
+#include "code.h"
 
 #define SINFO spell_info[spellnum]
 
@@ -34,7 +32,6 @@ const char *unused_spellname = "!UNUSED!"; /* So we can get &unused_spellname */
 
 /* Local (File Scope) Function Prototypes */
 static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch, struct obj_data *tobj);
-static void spello(int spl, const char *name, int max_mana, int min_mana, int mana_change, int minpos, int targets, int violent, int routines, const char *wearoff);
 
 /* Local (File Scope) Variables */
 struct syllable {
@@ -77,6 +74,16 @@ static struct syllable syls[] = {
 };
 
 
+void call_ASPELL (void (*function) (), int level, struct char_data *ch,
+                  struct char_data *vict, struct obj_data *obj)
+{
+ (*function)(level, ch, vict, obj);
+}
+
+void call_ACMD (void (*function) (), struct char_data *ch, char *argument, int cmd, int subcmd)
+{
+ (*function)(ch, argument, cmd, subcmd);
+}
 
 int mag_manacost(struct char_data *ch, int spellnum)
 {
@@ -149,45 +156,7 @@ static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
 const char *skill_name(int num)
 {
   return get_spell_name(num);
-  /*
-  if (num > 0 && num <= TOP_SPELL_DEFINE)
-    return (spell_info[num].name);
-  else if (num == -1)
-    return ("UNUSED");
-  else
-    return ("UNDEFINED");
-  */
 }
-
-/*
-int find_skill_num(char *name)
-{
-  int skindex, ok;
-  char *temp, *temp2;
-  char first[256], first2[256], tempbuf[256];
-
-  for (skindex = 1; skindex <= TOP_SPELL_DEFINE; skindex++) {
-    if (is_abbrev(name, spell_info[skindex].name))
-      return (skindex);
-
-    ok = TRUE;
-    strlcpy(tempbuf, spell_info[skindex].name, sizeof(tempbuf));	// strlcpy: OK 
-    temp = any_one_arg(tempbuf, first);
-    temp2 = any_one_arg(name, first2);
-    while (*first && *first2 && ok) {
-      if (!is_abbrev(first2, first))
-	ok = FALSE;
-      temp = any_one_arg(temp, first);
-      temp2 = any_one_arg(temp2, first2);
-    }
-
-    if (ok && !*first2)
-      return (skindex);
-  }
-
-  return (-1);
-}
-*/
 
 /* This function is the very heart of the entire magic system.  All invocations
  * of all types of magic -- objects, spoken and unspoken PC and NPC spells, the
@@ -200,6 +169,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
   int savetype;
   int i, dur, res, rts_code; 
   struct str_spells *spell;
+  struct affected_type *af;
 
   if (spellnum < 1 || spellnum > TOP_SPELL_DEFINE)
     return (0);
@@ -234,6 +204,16 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     send_to_char(caster, "This mob is protected.\r\n");
     return (0);
   }
+
+  for (af = cvict->affected; af; af = af->next)
+    if (IS_SET_AR(AFF_FLAGS(cvict), AFF_PROTECT) && (af->location == spellnum)) {
+    
+      if (af->modifier >= rand_number(0, 99)) {
+        send_to_char(caster, "%s is protected and resits your magic.\r\n", GET_NAME(cvict));
+        return (0); 
+      }
+    }
+
   /* determine the type of saving throw */
   switch (casttype) {
   case CAST_STAFF:
@@ -294,21 +274,6 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 
   if ((spell->mag_flags & MAG_MANUAL) && spell->function) 
     call_ASPELL (spell->function, GET_LEVEL(caster), caster, cvict, ovict);
-
-  /*
-  if (spell->mag_flags & MAG_MANUAL)
-    switch (spellnum) {
-    case SPELL_CHARM:		MANUAL_SPELL(spell_charm); break;
-    case SPELL_CREATE_WATER:	MANUAL_SPELL(spell_create_water); break;
-    case SPELL_DETECT_POISON:	MANUAL_SPELL(spell_detect_poison); break;
-    case SPELL_ENCHANT_WEAPON:  MANUAL_SPELL(spell_enchant_weapon); break;
-    case SPELL_IDENTIFY:	MANUAL_SPELL(spell_identify); break;
-    case SPELL_LOCATE_OBJECT:   MANUAL_SPELL(spell_locate_object); break;
-    case SPELL_SUMMON:		MANUAL_SPELL(spell_summon); break;
-    case SPELL_WORD_OF_RECALL:  MANUAL_SPELL(spell_recall); break;
-    case SPELL_TELEPORT:	MANUAL_SPELL(spell_teleport); break;
-    }
-  */
 
   return (1);
 }
@@ -524,8 +489,8 @@ int cast_spell(struct char_data *ch, struct char_data *tch,
  * determines the spell number and finds a target, throws the die to see if
  * the spell can be cast, checks for sufficient mana and subtracts it, and
  * passes control to cast_spell(). */
-//ACMD(do_cast)
-ACMD(do_cast_old)
+/*
+ACMD(do_old_cast)
 {
   struct char_data *tch = NULL;
   struct obj_data *tobj = NULL;
@@ -535,7 +500,7 @@ ACMD(do_cast_old)
   if (IS_NPC(ch))
     return;
 
-  /* get: blank, spell name, target name */
+  // get: blank, spell name, target name 
   s = strtok(argument, "'");
 
   if (s == NULL) {
@@ -551,7 +516,7 @@ ACMD(do_cast_old)
 
   skip_spaces(&s);
 
-  /* spellnum = search_block(s, spells, 0); */
+  // spellnum = search_block(s, spells, 0);
   spellnum = find_skill_num(s);
 
   if ((spellnum < 1) || (spellnum > MAX_SPELLS) || !*s) {
@@ -566,7 +531,7 @@ ACMD(do_cast_old)
     send_to_char(ch, "You are unfamiliar with that spell.\r\n");
     return;
   }
-  /* Find the target */
+  // Find the target
   if (t != NULL) {
     char arg[MAX_INPUT_LENGTH];
 
@@ -574,7 +539,7 @@ ACMD(do_cast_old)
     one_argument(arg, t);
     skip_spaces(&t);
 
-    /* Copy target to global cast_arg2, for use in spells like locate object */
+    // Copy target to global cast_arg2, for use in spells like locate object
     strcpy(cast_arg2, t);
   }
   if (IS_SET(SINFO.targets, TAR_IGNORE)) {
@@ -608,7 +573,7 @@ ACMD(do_cast_old)
       if ((tobj = get_obj_vis(ch, t, &number)) != NULL)
 	target = TRUE;
 
-  } else {			/* if target string is empty */
+  } else {			// if target string is empty 
     if (!target && IS_SET(SINFO.targets, TAR_FIGHT_SELF))
       if (FIGHTING(ch) != NULL) {
 	tch = ch;
@@ -619,7 +584,7 @@ ACMD(do_cast_old)
 	tch = FIGHTING(ch);
 	target = TRUE;
       }
-    /* if no target specified, and the spell isn't violent, default to self */
+    // if no target specified, and the spell isn't violent, default to self 
     if (!target && IS_SET(SINFO.targets, TAR_CHAR_ROOM) &&
 	!SINFO.violent) {
       tch = ch;
@@ -646,7 +611,7 @@ ACMD(do_cast_old)
     return;
   }
 
-  /* You throws the dice and you takes your chances.. 101% is total failure */
+  // You throws the dice and you takes your chances.. 101% is total failure 
   if (rand_number(0, 101) > GET_SKILL(ch, spellnum)) {
     WAIT_STATE(ch, PULSE_VIOLENCE);
     if (!tch || !skill_message(0, ch, tch, spellnum))
@@ -655,7 +620,7 @@ ACMD(do_cast_old)
       GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - (mana / 2)));
     if (SINFO.violent && tch && IS_NPC(tch))
       hit(tch, ch, TYPE_UNDEFINED);
-  } else { /* cast spell returns 1 on success; subtract mana & set waitstate */
+  } else { // cast spell returns 1 on success; subtract mana & set waitstate 
     if (cast_spell(ch, tch, tobj, spellnum)) {
       WAIT_STATE(ch, PULSE_VIOLENCE);
       if (mana > 0)
@@ -663,7 +628,9 @@ ACMD(do_cast_old)
     }
   }
 }
+*/
 
+// verify
 void spell_level(int spell, int chclass, int level)
 {
   int bad = 0;
@@ -689,310 +656,221 @@ void spell_level(int spell, int chclass, int level)
     spell_info[spell].min_level[chclass] = level;
 }
 
-
-/* Assign the spells on boot up */
-static void spello(int spl, const char *name, int max_mana, int min_mana,
-	int mana_change, int minpos, int targets, int violent, int routines, const char *wearoff)
+ACMD(do_cast)
 {
-  int i;
+ char *s, *targ = NULL;
+ static const char *wrong_pos[] = {
+"Lie still; you are DEAD!!! :-(\r\n",
+"You are in a pretty bad shape, unable to do anything!\r\n",
+"You are in a pretty bad shape, unable to do anything!\r\n",
+"All you can do right now is think about the stars!\r\n",
+"In your dreams, or what?\r\n",
+"Nah... You feel too relaxed to do that..\r\n",
+"Maybe you should get on your feet first?\r\n",
+"No way!  You're fighting for your life!\r\n"};
 
-  for (i = 0; i < NUM_CLASSES; i++)
-    spell_info[spl].min_level[i] = LVL_IMMORT;
-  spell_info[spl].mana_max = max_mana;
-  spell_info[spl].mana_min = min_mana;
-  spell_info[spl].mana_change = mana_change;
-  spell_info[spl].min_position = minpos;
-  spell_info[spl].targets = targets;
-  spell_info[spl].violent = violent;
-  spell_info[spl].routines = routines;
-  spell_info[spl].name = name;
-  spell_info[spl].wear_off_msg = wearoff;
-}
+ struct char_data *tch = NULL;
+ struct obj_data *tobj = NULL;
+ struct char_data *vict = NULL;
+ struct obj_data *ovict = NULL;
+ struct str_spells *spell = NULL;
+ int i, delay, rts_code = TRUE;
+ int effectiveness = 0;
+ int number;
+ int level, assign, target = 0;
+ int mana = 0;
 
-void unused_spell(int spl)
-{
-  int i;
+ if (IS_NPC(ch))
+   return;
 
-  for (i = 0; i < NUM_CLASSES; i++)
-    spell_info[spl].min_level[i] = LVL_IMPL + 1;
-  spell_info[spl].mana_max = 0;
-  spell_info[spl].mana_min = 0;
-  spell_info[spl].mana_change = 0;
-  spell_info[spl].min_position = 0;
-  spell_info[spl].targets = 0;
-  spell_info[spl].violent = 0;
-  spell_info[spl].routines = 0;
-  spell_info[spl].name = unused_spellname;
-}
+ // for spell check that is is enclosed in ''
+ if (subcmd == SCMD_SPELL) {
+   s = strtok(argument, "'");
+   if (s == NULL) {
+     send_to_char (ch, "Cast what where?\r\n");
+     return;
+   }
+   if (!(s = strtok(NULL, "'"))) {
+     send_to_char (ch, "Spell names must be enclosed in the Holy Magic Symbols: '\r\n");
+     return;
+   }
+   targ = strtok (NULL, "\0");
+ }
+ else // skill
+   s = argument;
 
-#define skillo(skill, name) spello(skill, name, 0, 0, 0, 0, 0, 0, 0, NULL);
-/* Arguments for spello calls:
- * spellnum, maxmana, minmana, manachng, minpos, targets, violent?, routines.
- * spellnum:  Number of the spell.  Usually the symbolic name as defined in
- *  spells.h (such as SPELL_HEAL).
- * spellname: The name of the spell.
- * maxmana :  The maximum mana this spell will take (i.e., the mana it
- *  will take when the player first gets the spell).
- * minmana :  The minimum mana this spell will take, no matter how high
- *  level the caster is.
- * manachng:  The change in mana for the spell from level to level.  This
- *  number should be positive, but represents the reduction in mana cost as
- *  the caster's level increases.
- * minpos  :  Minimum position the caster must be in for the spell to work
- *  (usually fighting or standing). targets :  A "list" of the valid targets
- *  for the spell, joined with bitwise OR ('|').
- * violent :  TRUE or FALSE, depending on if this is considered a violent
- *  spell and should not be cast in PEACEFUL rooms or on yourself.  Should be
- *  set on any spell that inflicts damage, is considered aggressive (i.e.
- *  charm, curse), or is otherwise nasty.
- * routines:  A list of magic routines which are associated with this spell
- *  if the spell uses spell templates.  Also joined with bitwise OR ('|').
- * See the documentation for a more detailed description of these fields. You
- * only need a spello() call to define a new spell; to decide who gets to use
- * a spell or skill, look in class.c.  -JE */
-void mag_assign_spells(void)
-{
-  int i;
+ if (subcmd == SCMD_SPELL)
+   spell = get_spell_by_name(s, SPELL); 
+ else
+   spell = get_spell_by_vnum(subcmd);
 
-  /* Do not change the loop below. */
-  for (i = 0; i <= TOP_SPELL_DEFINE; i++)
-    unused_spell(i);
-  /* Do not change the loop above. */
+ if (!spell || (spell->status != available)) {
+   if (subcmd == SCMD_SPELL)
+     send_to_char(ch, "Cast what?!?\r\n");
+   else
+     send_to_char(ch, "%s", HUH);  
+   return;
+ }
 
-  spello(SPELL_ANIMATE_DEAD, "animate dead", 35, 10, 3, POS_STANDING,
-	TAR_OBJ_ROOM, FALSE, MAG_SUMMONS,
-	NULL);
+ // for spells and skills with a function, we only check if status == available, and
+ // we return the control to it function.
+ if (spell->function) {
+   if (spell->type == SPELL) {
+//     call_ASPELL (spell->function, GET_LEVEL(ch), ch, vict, ovict);
+   }
+   else {
+     call_ACMD (spell->function, ch, argument, 0, 0);
+     return;
+   }
+ }
+ if (((spell->type == SPELL) && (subcmd != SCMD_SPELL)) ||
+     ((spell->type == SKILL) && (subcmd == SCMD_SPELL))) {
+   send_to_char (ch, "%s", HUH);
+   return;
+ }
+ level = get_spell_level_by_vnum(spell->vnum, GET_CLASS(ch));
+ if (GET_LEVEL(ch) < level) {
+   send_to_char(ch, "You do not know that %s!\r\n", (spell->type == SPELL) ? "spell" : "skill");
+   return;
+ }
+ if ((GET_LEVEL(ch) < LVL_IMMORT) && (GET_SKILL(ch, spell->vnum) == 0)) {
+   send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
+   return;
+ }
+ if (GET_POS(ch) < spell->min_pos) {
+   send_to_char (ch, "%s", wrong_pos[(int) GET_POS(ch)]);
+   return;
+ }
 
-  spello(SPELL_ARMOR, "armor", 30, 15, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
-	"You feel less protected.");
+/* Find the target */
+  if (targ != NULL) {
+    char arg[MAX_INPUT_LENGTH];
 
-  spello(SPELL_BLESS, "bless", 35, 5, 3, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_OBJ_INV, FALSE, MAG_AFFECTS | MAG_ALTER_OBJS,
-	"You feel less righteous.");
+    strlcpy(arg, targ, sizeof(arg));
+    one_argument(arg, targ);
+    skip_spaces(&targ);
 
-  spello(SPELL_BLINDNESS, "blindness", 35, 25, 1, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_NOT_SELF, FALSE, MAG_AFFECTS,
-	"You feel a cloak of blindness dissolve.");
+    /* Copy target to global cast_arg2, for use in spells like locate object */
+    strcpy(cast_arg2, targ);
+  }
 
-  spello(SPELL_BURNING_HANDS, "burning hands", 30, 10, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
+  if (spell->targ_flags & TAR_IGNORE) {
+    target = TRUE;
+  } else if (targ != NULL && *targ) {
+    number = get_number(&targ);
+    if (!target && (spell->targ_flags & TAR_CHAR_ROOM)) {
+      if ((tch = get_char_vis(ch, targ, &number, FIND_CHAR_ROOM)) != NULL)
+        target = TRUE;
+    }
+    if (!target && (spell->targ_flags & TAR_CHAR_WORLD))
+      if ((tch = get_char_vis(ch, targ, &number, FIND_CHAR_WORLD)) != NULL)
+        target = TRUE;
 
-  spello(SPELL_CALL_LIGHTNING, "call lightning", 40, 25, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
+    if (!target && (spell->targ_flags & TAR_OBJ_INV))
+      if ((tobj = get_obj_in_list_vis(ch, targ, &number, ch->carrying)) != NULL)
+        target = TRUE;
 
-  spello(SPELL_CHARM, "charm person", 75, 50, 2, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_NOT_SELF, TRUE, MAG_MANUAL,
-	"You feel more self-confident.");
+    if (!target && (spell->targ_flags & TAR_OBJ_EQUIP)) {
+      for (i = 0; !target && i < NUM_WEARS; i++)
+        if (GET_EQ(ch, i) && isname(targ, GET_EQ(ch, i)->name)) {
+          tobj = GET_EQ(ch, i);
+          target = TRUE;
+        }
+    }
+    if (!target && (spell->targ_flags & TAR_OBJ_ROOM))
+      if ((tobj = get_obj_in_list_vis(ch, targ, &number, world[IN_ROOM(ch)].contents)) != NULL)
+        target = TRUE;
 
-  spello(SPELL_CHILL_TOUCH, "chill touch", 30, 10, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE | MAG_AFFECTS,
-	"You feel your strength return.");
+    if (!target && (spell->targ_flags & TAR_OBJ_WORLD))
+      if ((tobj = get_obj_vis(ch, targ, &number)) != NULL)
+        target = TRUE;
 
-  spello(SPELL_CLONE, "clone", 80, 65, 5, POS_STANDING,
-	TAR_IGNORE, FALSE, MAG_SUMMONS,
-	NULL);
+  } else {                      /* if target string is empty */
+ if (!target && (spell->targ_flags & TAR_FIGHT_SELF))
+      if (FIGHTING(ch) != NULL) {
+        tch = ch;
+        target = TRUE;
+      }
+    if (!target && (spell->targ_flags & TAR_FIGHT_VICT))
+      if (FIGHTING(ch) != NULL) {
+        tch = FIGHTING(ch);
+        target = TRUE;
+      }
+    /* if no target specified, and the spell isn't violent, default to self */
+    if (!target && ((spell->targ_flags & TAR_CHAR_ROOM) || (spell->targ_flags & TAR_SELF_ONLY)) &&
+        !(spell->mag_flags & MAG_VIOLENT)) {
+      tch = ch;
+      target = TRUE;
+    }
+    if (!target) {
+      send_to_char(ch, "Upon %s should the spell be cast?\r\n",
+                (spell->targ_flags & (TAR_OBJ_ROOM | TAR_OBJ_INV | TAR_OBJ_WORLD | TAR_OBJ_EQUIP)) ? "what" : "who");
+      return;
+    }
+  }
 
-  spello(SPELL_COLOR_SPRAY, "color spray", 30, 15, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
+  if (target && (tch == ch) && (spell->damages) && (spell->mag_flags & MAG_VIOLENT)) {
+    send_to_char(ch, "You shouldn't cast that on yourself -- could be bad for your health!\r\n");
+    return;
+  }
+  if (!target) {
+    send_to_char(ch, "Cannot find the target of your spell!\r\n");
+    return;
+  }
+  mana = mag_manacost(ch, spell->vnum);
+  if ((mana > 0) && (GET_MANA(ch) < mana) && (GET_LEVEL(ch) < LVL_IMMORT)) {
+    send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
+    return;
+  }
 
-  spello(SPELL_CONTROL_WEATHER, "control weather", 75, 25, 5, POS_STANDING,
-	TAR_IGNORE, FALSE, MAG_MANUAL,
-	NULL);
+ if (spell->effectiveness)
+   effectiveness = GET_SKILL(ch, spell->vnum) * 
+                   formula_interpreter (ch, vict, spell->vnum, TRUE, spell->effectiveness, &rts_code) / 100;
 
-  spello(SPELL_CREATE_FOOD, "create food", 30, 5, 4, POS_STANDING,
-	TAR_IGNORE, FALSE, MAG_CREATIONS,
-	NULL);
+ if (rand_number (0, 101) > effectiveness) {
+   send_to_char (ch, "You lost your concentration!\r\n");
+   if (mana > 0)
+     GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - (mana / 2)));
 
-  spello(SPELL_CREATE_WATER, "create water", 30, 5, 4, POS_STANDING,
-	TAR_OBJ_INV | TAR_OBJ_EQUIP, FALSE, MAG_MANUAL,
-	NULL);
+   // if you lost your concentration and the spell is MAG_VIOLENT, you still hit a mobile to start the fight.
+   if ((spell->mag_flags & MAG_VIOLENT) && tch && IS_NPC(tch))
+     hit(tch, ch, TYPE_UNDEFINED);
 
-  spello(SPELL_CURE_BLIND, "cure blind", 30, 5, 2, POS_STANDING,
-	TAR_CHAR_ROOM, FALSE, MAG_UNAFFECTS,
-	NULL);
+   return;
+ }
 
-  spello(SPELL_CURE_CRITIC, "cure critic", 30, 10, 2, POS_FIGHTING,
-	TAR_CHAR_ROOM, FALSE, MAG_POINTS,
-	NULL);
+ // check logical with above IS_SPELL_LEARNED, maybe it should return assign or 0 then?!?
+ /*
+ if ((assign = find_spell_assign (ch, spell)) == -1) {
+   send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
+   return;
+ }
+ */
+ if ((spell->type == SPELL) && (GET_LEVEL(ch) < LVL_IMMORT)) {
+   assign = find_spell_assign (ch, spell); 
 
-  spello(SPELL_CURE_LIGHT, "cure light", 30, 10, 2, POS_FIGHTING,
-	TAR_CHAR_ROOM, FALSE, MAG_POINTS,
-	NULL);
+   mana = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->assign[assign].num_mana, &rts_code);
+     
+   if ((mana > 0) && (GET_MANA(ch) < mana)) {
+     send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
+     return;
+   }
+ }
 
-  spello(SPELL_CURSE, "curse", 80, 50, 2, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_OBJ_INV, TRUE, MAG_AFFECTS | MAG_ALTER_OBJS,
-	"You feel more optimistic.");
+ if (spell->delay) {
+   delay = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->delay, 
+                                &rts_code);
+   WAIT_STATE (ch, (delay > MAX_SPELL_DELAY) ? MAX_SPELL_DELAY : delay);
+ }
 
-  spello(SPELL_DARKNESS, "darkness", 30, 5, 4, POS_STANDING,
-	TAR_IGNORE, FALSE, MAG_ROOMS,
-	NULL);
+ if (cast_spell(ch, tch, tobj, spell->vnum)) {
+    WAIT_STATE(ch, PULSE_VIOLENCE);
+    if (mana > 0)
+      GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - mana));
+ }
 
-  spello(SPELL_DETECT_ALIGN, "detect alignment", 20, 10, 2, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
-	"You feel less aware.");
-
-  spello(SPELL_DETECT_INVIS, "detect invisibility", 20, 10, 2, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
-	"Your eyes stop tingling.");
-
-  spello(SPELL_DETECT_MAGIC, "detect magic", 20, 10, 2, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
-	"The detect magic wears off.");
-
-  spello(SPELL_DETECT_POISON, "detect poison", 15, 5, 1, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
-	"The detect poison wears off.");
-
-  spello(SPELL_DISPEL_EVIL, "dispel evil", 40, 25, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
-
-  spello(SPELL_DISPEL_GOOD, "dispel good", 40, 25, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
-
-  spello(SPELL_EARTHQUAKE, "earthquake", 40, 25, 3, POS_FIGHTING,
-	TAR_IGNORE, TRUE, MAG_AREAS,
-	NULL);
-
-  spello(SPELL_ENCHANT_WEAPON, "enchant weapon", 150, 100, 10, POS_STANDING,
-	TAR_OBJ_INV, FALSE, MAG_MANUAL,
-	NULL);
-
-  spello(SPELL_ENERGY_DRAIN, "energy drain", 40, 25, 1, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE | MAG_MANUAL,
-	NULL);
-
-  spello(SPELL_GROUP_ARMOR, "group armor", 50, 30, 2, POS_STANDING,
-	TAR_IGNORE, FALSE, MAG_GROUPS,
-	NULL);
-
-  spello(SPELL_FIREBALL, "fireball", 40, 30, 2, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
-
-  spello(SPELL_FLY, "fly", 40, 20, 2, POS_FIGHTING,
-	TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
-	"You drift slowly to the ground.");
-
-  spello(SPELL_GROUP_HEAL, "group heal", 80, 60, 5, POS_STANDING,
-	TAR_IGNORE, FALSE, MAG_GROUPS,
-	NULL);
-
-  spello(SPELL_HARM, "harm", 75, 45, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
-
-  spello(SPELL_HEAL, "heal", 60, 40, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM, FALSE, MAG_POINTS | MAG_UNAFFECTS,
-	NULL);
-
-  spello(SPELL_INFRAVISION, "infravision", 25, 10, 1, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
-	"Your night vision seems to fade.");
-
-  spello(SPELL_INVISIBLE, "invisibility", 35, 25, 1, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM, FALSE, MAG_AFFECTS | MAG_ALTER_OBJS,
-	"You feel yourself exposed.");
-
-  spello(SPELL_LIGHTNING_BOLT, "lightning bolt", 30, 15, 1, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
-
-  spello(SPELL_LOCATE_OBJECT, "locate object", 25, 20, 1, POS_STANDING,
-	TAR_OBJ_WORLD, FALSE, MAG_MANUAL,
-	NULL);
-
-  spello(SPELL_MAGIC_MISSILE, "magic missile", 25, 10, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
-
-  spello(SPELL_POISON, "poison", 50, 20, 3, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_NOT_SELF | TAR_OBJ_INV, TRUE,
-	MAG_AFFECTS | MAG_ALTER_OBJS,
-	"You feel less sick.");
-
-  spello(SPELL_PROT_FROM_EVIL, "protection from evil", 40, 10, 3, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
-	"You feel less protected.");
-
-  spello(SPELL_REMOVE_CURSE, "remove curse", 45, 25, 5, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_EQUIP, FALSE,
-	MAG_UNAFFECTS | MAG_ALTER_OBJS,
-	NULL);
-
-  spello(SPELL_REMOVE_POISON, "remove poison", 40, 8, 4, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM, FALSE, MAG_UNAFFECTS | MAG_ALTER_OBJS,
-	NULL);
-
-  spello(SPELL_SANCTUARY, "sanctuary", 110, 85, 5, POS_STANDING,
-	TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
-	"The white aura around your body fades.");
-
-  spello(SPELL_SENSE_LIFE, "sense life", 20, 10, 2, POS_STANDING,
-	TAR_CHAR_ROOM | TAR_SELF_ONLY, FALSE, MAG_AFFECTS,
-	"You feel less aware of your surroundings.");
-
-  spello(SPELL_SHOCKING_GRASP, "shocking grasp", 30, 15, 3, POS_FIGHTING,
-	TAR_CHAR_ROOM | TAR_FIGHT_VICT, TRUE, MAG_DAMAGE,
-	NULL);
-
-  spello(SPELL_SLEEP, "sleep", 40, 25, 5, POS_STANDING,
-	TAR_CHAR_ROOM, TRUE, MAG_AFFECTS,
-	"You feel less tired.");
-
-  spello(SPELL_STRENGTH, "strength", 35, 30, 1, POS_STANDING,
-	TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
-	"You feel weaker.");
-
-  spello(SPELL_SUMMON, "summon", 75, 50, 3, POS_STANDING,
-	TAR_CHAR_WORLD | TAR_NOT_SELF, FALSE, MAG_MANUAL,
-	NULL);
-
-  spello(SPELL_TELEPORT, "teleport", 75, 50, 3, POS_STANDING,
-	TAR_CHAR_ROOM, FALSE, MAG_MANUAL,
-	NULL);
-
-  spello(SPELL_WATERWALK, "waterwalk", 40, 20, 2, POS_STANDING,
-	TAR_CHAR_ROOM, FALSE, MAG_AFFECTS,
-	"Your feet seem less buoyant.");
-
-  spello(SPELL_WORD_OF_RECALL, "word of recall", 20, 10, 2, POS_FIGHTING,
-	TAR_CHAR_ROOM, FALSE, MAG_MANUAL,
-	NULL);
-
-  spello(SPELL_IDENTIFY, "identify", 50, 25, 5, POS_STANDING,
-        TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
-        NULL);
-
-
-  /* NON-castable spells should appear below here. */
-  spello(SPELL_IDENTIFY, "identify", 0, 0, 0, 0,
-	TAR_CHAR_ROOM | TAR_OBJ_INV | TAR_OBJ_ROOM, FALSE, MAG_MANUAL,
-	NULL);
-
-  /* you might want to name this one something more fitting to your theme -Welcor*/
-  spello(SPELL_DG_AFFECT, "Script-inflicted", 0, 0, 0, POS_SITTING,
-	TAR_IGNORE, TRUE, 0,
-	NULL);
-
-  /* Declaration of skills - this actually doesn't do anything except set it up
-   * so that immortals can use these skills by default.  The min level to use
-   * the skill for other classes is set up in class.c. */
-  skillo(SKILL_BACKSTAB, "backstab");
-  skillo(SKILL_BASH, "bash");
-  skillo(SKILL_HIDE, "hide");
-  skillo(SKILL_KICK, "kick");
-  skillo(SKILL_PICK_LOCK, "pick lock");
-  skillo(SKILL_RESCUE, "rescue");
-  skillo(SKILL_SNEAK, "sneak");
-  skillo(SKILL_STEAL, "steal");
-  skillo(SKILL_TRACK, "track");
-  skillo(SKILL_WHIRLWIND, "whirlwind");
-  skillo(SKILL_BANDAGE, "bandage");
+ if (spell->script)
+   if (!perform_script (spell->script, ch, vict, ovict, spell->vnum, 0) && !rts_code)
+     send_to_char (ch, "%s", NOEFFECT);   
 }
 

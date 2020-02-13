@@ -4,7 +4,8 @@
 /*          (using operators, variables, conditional ? :, and logical)         */
 /* author:  Bob Castillo (castillo7@hotmail.com)                               */
 /* version: 0.5b      (for circle MUD 3.x with Oasis OLC)                      */
-/* date:    25 dec 1999 : Revised 2020                                         */
+/* date:    25 dec 1999.                                                       */
+/*          2020: updated, bugs fix, etc. now for TBA MUD 2020.                */
 /* *************************************************************************** */
 #include "conf.h"
 #include "sysdep.h"
@@ -19,6 +20,68 @@
 #include "string.h"
 
 //#define DEBUG_FORMULA
+
+const char *list_codes[] = {
+   " ",             /* 00 */
+   "&&",            /* 01 (a) */
+   "||",            /* 02 (b) */
+   ">=",            /* 03 (c) */
+   ">",             /* 04 (d) */
+   "<=",            /* 05 (e) */
+   "<",             /* 06 (f) */
+   "==",            /* 07 (g) */
+   "!=",            /* 08 (h) */
+   "!",             /* 09 (i) */
+   "^",             /* 10 (j) */
+   "&",             /* 11 (k) */
+   "|",             /* 12 (l) */
+   "-",             /* 13 (m) */
+   "+",             /* 14 (n) */
+   "/",             /* 15 (o) */
+   "*",             /* 16 (p) */
+   "(",             /* 17 (q) */
+   ")",             /* 18 (r) */
+   "?",             /* 19 (s) */
+   ":",             /* 20 (t) */
+   "RAND(",         /* 21 (u) */
+   "SELF.",         /* 22 (v) */
+   "VICT.",         /* 23 (w) */
+   "%",             /* 24 (x) */
+                    /*    (y) (reserved for digit) */
+   "STR",           /* 25 (z) */
+   "DEX",           /* 26 (z) */
+   "INT",           /* 27 (z) */
+   "WIS",           /* 28 (z) */
+   "CON",           /* 29 (z) */
+   "CHA",           /* 30 (z) */
+   "CLASS",         /* 31 (z) */
+   "LEVEL",         /* 32 (z) */
+   "AGE",           /* 33 (z) */
+   "WEIGHT",        /* 34 (z) */
+   "HEIGHT",        /* 35 (z) */
+   "MAXMANA",       /* 36 (z) */
+   "MAXHIT",        /* 37 (z) */
+   "MAXMOVE",       /* 38 (z) */
+   "GOLD",          /* 39 (z) */
+   "EXP",           /* 40 (z) */
+   "ARMOR",         /* 41 (z) */
+   "HITROLL",       /* 42 (z) */
+   "DAMROLL",       /* 43 (z) */
+   "SAVPARA",       /* 44 (z) */
+   "SAVROD",        /* 45 (z) */
+   "SAVPETRI",      /* 46 (z) */
+   "SAVBREATH",     /* 47 (z) */
+   "SAVSPELL",      /* 48 (z) */
+   "HIT",           /* 49 (z) */
+   "MANA",          /* 50 (z) */
+   "MOVE",          /* 51 (z) */
+   "GOOD",          /* 52 (z) */
+   "NEUTRAL",       /* 53 (z) */
+   "EVIL",          /* 54 (z) */
+   "DICE(",         /* 55 (A) */
+   ",",             /* 56 (B) */
+   "\n"
+};
 
 void add_to_formula (struct formula **head_formula, int command, int value)
 {
@@ -254,6 +317,9 @@ int remove_brace (struct formula **head_formula, struct formula *C, // int * rts
  }
 
  if (A->command == CODE_COMMA) {
+#ifdef DEBUG_FORMULA
+   send_to_char(ch, "dice (%d, %d)\r\n", A->prev->value, B->value);
+#endif
    B->value = dice(A->prev->value, B->value);
    remove_node (head_formula, C);
    remove_node (head_formula, A);
@@ -425,7 +491,6 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
         return 0; 
       }
       while (ptr && ptr->command != CODE_ART_CBRACE) {
-//send_to_char(ch, "(in 1 mode %d) '%c' ", mode, CHAR_CODE(ptr->command));
         if (strchr (priority_check[mode], CHAR_CODE(ptr->command))) {
           ptr = formula_do_oper (head_formula, ptr, spell_vnum, ch, rts_code);
           if (*rts_code) {
@@ -441,15 +506,8 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
       if (ptr && remove_brace(head_formula, ptr, ch))
         brace = 0;
 
-      if (++mode > 4) {  
+      if (++mode > 4)  
         brace = 0;
-//        if (!exit) {
-//          *rts_code = ERROR_5003;
-//          send_formula_error (ch, *rts_code, spell_vnum, syserr);
-//          free_formula(head_formula);
-//          return 0; 
-//        }
-      }
       else
         ptr = tmp;
 
@@ -483,7 +541,6 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
    return 0;
 
  // remove all spaces in the formula, and truncate if cmd is bigger than my buffer 2048.
- // send_to_char(self, "len: %ld\r\n", strlen(cmd));
  buf[0] = ' ';
 
  for (i=0; i<strlen(cmd) && (i < 2046); i++) {
@@ -497,10 +554,8 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
    if (cmd[i] != ' ')  
      buf[cpt_char++] = toupper(cmd[i]);
  }
- buf[cpt_char] = ' '; // fix me
+ buf[cpt_char] = ' '; 
  buf[cpt_char+1] = '\x0';
-
- //send_to_char(self, "you ask: '%s' (%d)\r\n", buf, cpt_char);
 
  if (strstr(buf, "+++")) {
    *rts_code = ERROR_5007;
@@ -537,20 +592,11 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
    return 0;
   }
 
- // I'm adding () around the formula to avoid infinite loop.
- // The system search for the last ) and perform everything between the last ) and his (
- // In formula that doesn't end by ), the system fail to remove a pair of (), because there aren't any.
- // That create an infinite loop. This is a little hack, maybe i'll find a better way to fix that eventually.
- // I also added code to detect infinite loop as a second safety, and return ERROR and value 0;
- //add_to_formula (&head_formula, CODE_ART_OBRACE, 0); // little hack. 
-
  for (i=0; i<strlen(buf); i++) {
    if (type_act)
      otype_act = type_act;
    if (!(type_act = get_formula_typeact ( buf, &i )) && (i<strlen(buf)-1)) 
      continue;              
-
- // send_to_char(self, "%d ", type_act);
 
    if (!otype_act)  {
      if (strchr(bad_start_code, CHAR_CODE(type_act))) {
@@ -657,8 +703,6 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
    send_formula_error (self, *rts_code, spell_vnum, syserr);
    return 0;
  }
-
- //add_to_formula (&head_formula, CODE_ART_CBRACE, 0); // little hack.
 
  return (perform_formula(&head_formula, spell_vnum, self, syserr, rts_code));
 }
