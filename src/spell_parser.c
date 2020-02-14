@@ -168,6 +168,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 {
   int savetype;
   int i, dur, res, rts_code; 
+  int ret_flags = 0;
   struct str_spells *spell;
   struct affected_type *af;
 
@@ -242,11 +243,11 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     }
   }
 
-  if (spell->mag_flags & MAG_AFFECTS)
-    mag_affects(level, caster, cvict, spellnum, savetype);
+  if (spell->mag_flags & MAG_AFFECTS) 
+    ret_flags |= mag_affects(level, caster, cvict, spellnum, savetype);
 
   if (spell->mag_flags & MAG_UNAFFECTS)
-    mag_unaffects(level, caster, cvict, spellnum, savetype);
+    ret_flags |= mag_unaffects(level, caster, cvict, spellnum, savetype);
 
   if (spell->mag_flags & MAG_POINTS)
     mag_points(level, caster, cvict, spellnum, savetype);
@@ -274,6 +275,19 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 
   if ((spell->mag_flags & MAG_MANUAL) && spell->function) 
     call_ASPELL (spell->function, GET_LEVEL(caster), caster, cvict, ovict);
+
+  if (ret_flags == SPELL_FAILED) 
+    send_to_char (caster, "You failed!\r\n");
+  else if (ret_flags == SPELL_NOEFFECT)
+         send_to_char (caster, "%s", CONFIG_NOEFFECT);
+       else if (ret_flags & SPELL_SUCCESS) {
+              if ((caster != cvict) && (spell->messages.to_self != NULL))
+                act(spell->messages.to_self, FALSE, caster, 0, caster, TO_CHAR);
+              if (spell->messages.to_vict != NULL)
+                act(spell->messages.to_vict, FALSE, cvict, 0, caster, TO_CHAR);
+              if (spell->messages.to_room != NULL)
+                act(spell->messages.to_room, TRUE, cvict, 0, caster, TO_ROOM);
+            }
 
   return (1);
 }

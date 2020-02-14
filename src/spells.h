@@ -12,6 +12,10 @@
 #ifndef _SPELLS_H_
 #define _SPELLS_H_
 
+#define SPELL_NOEFFECT  (1 << 0)
+#define SPELL_FAILED    (1 << 1)
+#define SPELL_SUCCESS   (1 << 2)
+
 #define DEFAULT_STAFF_LVL	12
 #define DEFAULT_WAND_LVL	12
 
@@ -260,8 +264,8 @@ void mag_protections(int level, struct char_data *ch, struct char_data *tch,
 int mag_damage(int level, struct char_data *ch, struct char_data *victim,
   int spellnum, int savetype);
 
-void mag_affects(int level, struct char_data *ch, struct char_data *victim,
-  int spellnum, int savetype);
+int mag_affects(int level, struct char_data *ch, struct char_data *victim,
+                int spellnum, int savetype);
 
 void mag_groups(int level, struct char_data *ch, int spellnum, int savetype);
 
@@ -277,8 +281,8 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 void mag_points(int level, struct char_data *ch, struct char_data *victim,
  int spellnum, int savetype);
 
-void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
-  int spellnum, int type);
+int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
+                  int spellnum, int type);
 
 void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
   int spellnum, int type);

@@ -561,8 +561,8 @@ void spedit_show_points(struct descriptor_data *d) {
 void spedit_show_mobile(struct descriptor_data *d) {
   char buf[BUFSIZE];
 
-  snprintf (buf, BUFSIZE, "\r\n%s1%s) Mobile      : %s%s\r\n"
-                              "%s2%s) Item needed : %s%s\r\n"
+  snprintf (buf, BUFSIZE, "\r\n%s1%s) Mobile        : %s%s\r\n"
+                              "%s2%s) Required item : %s%s\r\n"
                               "\r\n%sEnter choice (0 to quit) : ",
                               grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->summon_mob),
                               grn, nrm, cyn, EMPTY_STR(OLC_SPELL(d)->summon_req),
@@ -1981,6 +1981,7 @@ ACMD(do_splist) {
  int search_by_class = CLASS_UNDEFINED;
  int search_by_part_name = 0;
  int search_disabled = 0;
+ int search_not_assigned = 0;
  size_t len = 0, tmp_len = 0;
 
  struct str_spells *ptr;
@@ -1993,6 +1994,7 @@ ACMD(do_splist) {
                     "splist cl  - list all spells in class cleric\r\n" 
                     "splist th  - list all spells in class thief\r\n" 
                     "splist wa  - list all spells in class warrior\r\n" 
+                    "splist not - list all spells not assigned\r\n"
                     "splist off - list all spells disabled\r\n"
                     "splist <word> - list all spells containing the <word>\r\n");
    return;
@@ -2012,6 +2014,9 @@ ACMD(do_splist) {
  else
  if(!strcmp(argument, "off")) 
    search_disabled = 1;
+ else
+ if(!strcmp(argument, "not"))
+   search_not_assigned = 1;
  else
  if(strcmp(argument, "all"))
    search_by_part_name = 1;
@@ -2038,6 +2043,8 @@ ACMD(do_splist) {
    if ((search_by_class == CLASS_WARRIOR) && !wa) continue;
 
    if (search_disabled && (ptr->status == available)) continue;
+
+   if ((mu || cl || th || wa) && search_not_assigned) continue;
 
    if (search_by_part_name && !strstr(ptr->name, argument)) continue;
 

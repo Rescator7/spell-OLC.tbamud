@@ -68,7 +68,6 @@ void spedit_init_new_spell (struct str_spells *spell);
 void spedit_save_internally (struct str_spells *spell);
 char *get_spell_name(int vnum);
 char *get_spell_wear_off (int vnum);
-char *get_spell_wear_off (int vnum);
 
 struct str_prot {
    int  prot_num;

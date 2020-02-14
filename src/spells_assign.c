@@ -188,6 +188,8 @@ void create_build_in_spells()
  new_spell->applies[1].appl_num = APPLY_AC;
  new_spell->applies[1].modifier = strdup("40");
  new_spell->applies[1].duration = strdup("2");
+ new_spell->applies[2].appl_num = AFF_BLIND + NUM_APPLIES;
+ new_spell->applies[2].duration = strdup("2");
  new_spell->messages.to_vict = strdup("You have been blinded!");
  new_spell->messages.to_room = strdup("$n seems to be blinded!");
  new_spell->messages.wear_off = strdup("You feel a cloak of blindness dissolve.");
@@ -211,6 +213,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 5;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup ("dice(3, self.class == 0 ? 8 : 6) + 3");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -231,6 +234,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 15;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(7, 8) + 7");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -275,6 +279,7 @@ void create_build_in_spells()
  new_spell->applies[0].modifier = strdup("-1");
  new_spell->applies[0].duration = strdup("4");
  new_spell->damages = strdup("dice(1, self.class == 0 ? 8 : 6) + 1");
+ new_spell->max_dam = 100;
  new_spell->messages.to_vict = strdup("You feel your strength wither!");
  new_spell->messages.wear_off = strdup("You feel your strength return.");
 
@@ -293,10 +298,12 @@ void create_build_in_spells()
  new_spell->mag_flags = MAG_SUMMONS;
  new_spell->effectiveness = strdup("100");
  new_spell->summon_mob = strdup("10");
+ new_spell->summon_req = strdup("161");
  sprintf(buf, "(80 - (5 * self.level)) > 65 ? (80 - (5 * self.level)) : 65");
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 30;
  new_spell->assign[0].num_mana = strdup(buf);
+ new_spell->messages.to_room = strdup("$n magically divides!");
 
  spedit_save_internally(new_spell);
 
@@ -317,6 +324,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 11;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(9, self.class == 0 ? 8 : 6) + 9");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -418,7 +426,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 9;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("You feel a lot better!");
- new_spell->points.hp = strdup("dice(3, 8) + 3 + (level / 4)");
+ new_spell->points.hp = strdup("dice(3, 8) + 3 + (self.level / 4)");
  spedit_save_internally(new_spell);
  
  // SPELL_CURE_LIGHT # 16
@@ -438,7 +446,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 1;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("You feel better.");
- new_spell->points.hp = strdup("dice(1, 8) + 1 + (level / 4)");
+ new_spell->points.hp = strdup("dice(1, 8) + 1 + (self.level / 4)");
  spedit_save_internally(new_spell);
 
  // SPELL_CURSE # 17
@@ -463,6 +471,8 @@ void create_build_in_spells()
  new_spell->applies[1].appl_num = APPLY_DAMROLL;
  new_spell->applies[1].modifier = strdup("-1");
  new_spell->applies[1].duration = strdup("1 + (self.level / 2)");
+ new_spell->applies[2].appl_num = AFF_CURSE + NUM_APPLIES;
+ new_spell->applies[2].duration = strdup("1 + (self.level / 2)");
  new_spell->messages.to_vict = strdup("You feel very uncomfortable.");
  new_spell->messages.to_room = strdup("$n briefly glows red!");
  new_spell->messages.wear_off = strdup("You feel more optimistic.");
@@ -582,6 +592,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 14;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(6, 8) + 6");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -602,6 +613,9 @@ void create_build_in_spells()
  new_spell->assign[0].level = 12;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(2, 8) + self.level");
+ new_spell->max_dam = 100;
+ new_spell->messages.to_self = strdup("You gesture and the earth begins to shake all around you!");
+ new_spell->messages.to_room = strdup("$n gracefully gestures and the earth begins to shake violently!");
 
  spedit_save_internally(new_spell);
 
@@ -642,6 +656,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 13;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("vict.level <= 2 ? 100 : dice(1, 10)");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -662,6 +677,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 15;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(11, self.class == 0 ? 8 : 6) + 11");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -682,6 +698,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 19;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(8, 8) + 8");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -702,6 +719,8 @@ void create_build_in_spells()
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 16;
  new_spell->assign[0].num_mana = strdup(buf);
+ new_spell->dispel[0] = strdup("4");
+ new_spell->messages.to_vict = strdup("A warm feeling floods your body.");
 
  spedit_save_internally(new_spell);
 
@@ -724,6 +743,8 @@ void create_build_in_spells()
  new_spell->applies[0].appl_num = APPLY_AC;
  new_spell->applies[0].modifier = strdup("-40");
  new_spell->applies[0].duration = strdup("12 + (self.level / 4)");
+ new_spell->applies[1].appl_num = AFF_INVISIBLE + NUM_APPLIES;
+ new_spell->applies[1].duration = strdup("12 + (self.level / 4)");
  new_spell->messages.to_vict = strdup("You vanish.");
  new_spell->messages.to_room = strdup("$n slowly fades out of existence.");
  new_spell->messages.wear_off = strdup("You feel yourself exposed.");
@@ -747,6 +768,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 9;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(7, self.class == 0 ? 8 : 6) + 7");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -787,6 +809,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 1;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(1, self.class == 0 ? 8 : 6) + 1");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -812,6 +835,8 @@ void create_build_in_spells()
  new_spell->applies[0].appl_num = APPLY_STR;
  new_spell->applies[0].modifier = strdup("-2");
  new_spell->applies[0].duration = strdup("self.level");
+ new_spell->applies[1].appl_num = AFF_POISON + NUM_APPLIES;
+ new_spell->applies[1].duration = strdup("self.level");
  new_spell->messages.to_vict = strdup("You feel very sick.");
  new_spell->messages.to_room = strdup("$n gets violently ill!");
  new_spell->messages.wear_off = strdup("You feel less sick.");
@@ -857,6 +882,7 @@ void create_build_in_spells()
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 26;
  new_spell->assign[0].num_mana = strdup(buf);
+ new_spell->dispel[0] = strdup("17"); // dispel curse
  new_spell->messages.to_vict = strdup("You don't feel so unlucky.");
 
  spedit_save_internally(new_spell);
@@ -902,6 +928,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 7;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(5, self.class == 0 ? 8 : 6) + 5");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
@@ -922,8 +949,10 @@ void create_build_in_spells()
  new_spell->assign[0].level = 8;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->applies[0].appl_num = AFF_SLEEP + NUM_APPLIES;
- new_spell->applies[0].duration = strdup("self.level / 4");
+ new_spell->applies[0].duration = strdup("self.level / 4 + 4");
  new_spell->messages.wear_off = strdup("You feel less tired.");
+ new_spell->messages.to_vict = strdup("You feel very sleepy...  Zzzz......");
+ new_spell->messages.to_room = strdup("$n goes to sleep.");
 
  spedit_save_internally(new_spell);
 
@@ -1019,8 +1048,9 @@ void create_build_in_spells()
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 10;
  new_spell->assign[0].num_mana = strdup(buf);
+ new_spell->dispel[0] = strdup("33");  // remove poison
  new_spell->messages.to_vict = strdup("A warm feeling runs through your body!");
- new_spell->messages.wear_off = strdup("$n looks better."); // is it wear off or to vict?
+ new_spell->messages.to_room = strdup("$n looks better."); 
 
  spedit_save_internally(new_spell);
 
@@ -1062,6 +1092,7 @@ void create_build_in_spells()
  new_spell->summon_mob = strdup("11");
  sprintf(buf, "(35 - (3 * self.level)) > 10 ? (35 - (3 * self.level)) : 10");
  new_spell->assign[0].num_mana = strdup(buf);
+ new_spell->messages.to_room = strdup("$n animates a corpse!");
 
  spedit_save_internally(new_spell);
 
@@ -1082,6 +1113,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 14;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->damages = strdup("dice(6, 8) + 6");
+ new_spell->max_dam = 100;
 
  spedit_save_internally(new_spell);
 
