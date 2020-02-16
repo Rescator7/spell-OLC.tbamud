@@ -2508,6 +2508,11 @@ void perform_act(const char *orig, struct char_data *ch, struct obj_data *obj,
       case 'n':
 	i = PERS(ch, to);
 	break;
+      case 'b': // act like 'p' if obj exists, otherwise act like 'N'. 
+        if (obj) {
+	  CHECK_NULL(obj, OBJS(obj, to));
+          break;
+        }
       case 'N':
 	CHECK_NULL(vict_obj, PERS((const struct char_data *) vict_obj, to));
 	dg_victim = (struct char_data *) vict_obj;

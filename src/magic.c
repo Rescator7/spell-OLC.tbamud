@@ -26,8 +26,6 @@
 
 /* local file scope function prototypes */
 static int mag_materials(struct char_data *ch, IDXTYPE item0, IDXTYPE item1, IDXTYPE item2, int extract, int verbose);
-static void perform_mag_groups(int level, struct char_data *ch, struct char_data *tch, int spellnum, int savetype);
-
 
 /* Negative apply_saving_throw[] values make saving throws better! So do
  * negative modifiers.  Though people may be used to the reverse of that.
@@ -59,7 +57,7 @@ void affect_update(void)
 {
   struct affected_type *af, *next;
   struct char_data *i;
-  char *wear_off_mesg;
+  struct str_spells *spell;
 
   for (i = character_list; i; i = i->next)
     for (af = i->affected; af; af = next) {
@@ -71,9 +69,9 @@ void affect_update(void)
       else {
 	if ((af->spell > 0) && (af->spell <= MAX_SKILLS)) {
 	  if (!af->next || (af->next->spell != af->spell) || (af->next->duration > 0)) {
-            wear_off_mesg = get_spell_wear_off(af->spell);
-	    if (wear_off_mesg)
-	      send_to_char(i, "%s\r\n", wear_off_mesg);
+            spell = get_spell_by_vnum(af->spell);
+	    if (spell && spell->messages.wear_off)
+	      send_to_char(i, "%s\r\n", spell->messages.wear_off);
           }
         }
 	affect_remove(i, af);
@@ -258,16 +256,16 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
 {
   struct affected_type af[MAX_SPELL_AFFECTS];
   bool accum_affect = FALSE, accum_duration = FALSE;
-  int i, j, rts_code, affect;
+  int i, j, rts_code, affect, effect = 0;
   struct str_spells *spell;
 
   if (victim == NULL || ch == NULL)
-    return SPELL_FAILED;
+    return MAGIC_FAILED;
 
   spell = get_spell_by_vnum(spellnum);
   if (!spell) {
     log("SYSERR: unknown spellnum %d passed to mag_affects.", spellnum);
-    return SPELL_FAILED;
+    return MAGIC_FAILED;
   }
 
   for (i = 0; i < MAX_SPELL_AFFECTS; i++) {
@@ -304,35 +302,34 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
                               break;
       case SPELL_BLINDNESS:   if (MOB_FLAGGED(victim, MOB_NOBLIND) || GET_LEVEL(victim) >= LVL_IMMORT ||
                                   mag_savingthrow(victim, savetype, 0)) {
-                                return SPELL_FAILED;
+                                return MAGIC_FAILED;
                               }
                               break;
       case SPELL_CURSE:       if (mag_savingthrow(victim, savetype, 0)) {
-                                return SPELL_NOEFFECT;
+                                return MAGIC_FAILED;
                               }
                               break;
       case SPELL_INVISIBLE:   if (!victim)
                                 victim = ch;
                               break;
       case SPELL_POISON:      if (mag_savingthrow(victim, savetype, 0)) {
-                                return SPELL_NOEFFECT;
+                                return MAGIC_FAILED;
                               }
                               break;
       case SPELL_SLEEP:       if (!CONFIG_PK_ALLOWED && !IS_NPC(ch) && !IS_NPC(victim))
-                                return SPELL_FAILED;
+                                return MAGIC_FAILED;
                               if (MOB_FLAGGED(victim, MOB_NOSLEEP))
-                                return SPELL_FAILED;
+                                return MAGIC_FAILED;
                               if (mag_savingthrow(victim, savetype, 0))
-                                return SPELL_FAILED;
+                                return MAGIC_FAILED;
 
                               if (GET_POS(victim) > POS_SLEEPING) {
-//                                send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
-//                                act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
+                                effect++;
                                 GET_POS(victim) = POS_SLEEPING;
                               }
                               break;
       case SPELL_STRENGTH:    if (GET_ADD(victim) == 100)
-                                return SPELL_NOEFFECT;
+                                return MAGIC_NOEFFECT;
    }
  }
 
@@ -342,43 +339,47 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
   if (IS_NPC(victim) && !affected_by_spell(victim, spellnum)) {
     for (i = 0; i < MAX_SPELL_AFFECTS; i++) {
       for (j=0; j<NUM_AFF_FLAGS; j++) {
-        if (IS_SET_AR(af[i].bitvector, j) && AFF_FLAGGED(victim, j)) {
-          return SPELL_NOEFFECT;
-        }
+        if (IS_SET_AR(af[i].bitvector, j) && AFF_FLAGGED(victim, j))
+          return MAGIC_NOEFFECT;
       }
     }
   }
 
   /* If the victim is already affected by this spell, and the spell does not
    * have an accumulative effect, then fail the spell. */
-  if (affected_by_spell(victim,spellnum) && !(accum_duration||accum_affect)) {
-    send_to_char(ch, "%s", CONFIG_NOEFFECT);
-    return SPELL_NOEFFECT;
-  }
+  if (affected_by_spell(victim,spellnum) && !(accum_duration||accum_affect))
+    return MAGIC_NOEFFECT;
+  
 
   for (i = 0; i < MAX_SPELL_AFFECTS; i++)
     if (af[i].bitvector[0] || af[i].bitvector[1] ||
         af[i].bitvector[2] || af[i].bitvector[3] ||
         (af[i].location != APPLY_NONE)) {
       affect_join(victim, af+i, accum_duration, FALSE, accum_affect, FALSE);
+      effect++;
     }
-  return SPELL_SUCCESS;
+
+  if (effect)
+    return MAGIC_SUCCESS;
+  else
+    return MAGIC_NOEFFECT;
 }
 
-void mag_protections(int level, struct char_data *ch, struct char_data *tch, int spellnum, int spellprot, int dur, int res)
+int mag_protections(int level, struct char_data *ch, struct char_data *tch, 
+                    int spellnum, int spellprot, int dur, int res)
 {
   struct str_spells *spell;
   struct affected_type af;
   int accum_duration = FALSE;
 
   if (tch == NULL || ch == NULL)
-    return;
+    return MAGIC_FAILED;
 
   spell = get_spell_by_vnum(spellnum);
 
   if (!spell) {
     log("SYSERR: unknown spellnum %d passed to mag_affects.", spellnum);
-    return;
+    return MAGIC_FAILED;
   }
  
   if (spell->mag_flags & MAG_ACCDUR)
@@ -390,25 +391,30 @@ void mag_protections(int level, struct char_data *ch, struct char_data *tch, int
   af.duration = dur;
 
   affect_join(tch, &af, accum_duration, FALSE, FALSE, FALSE);
-  // remove me     send_to_char(ch, "magic: spell num: %d, spell prot: %d, dur: %d res: %d\r\n", spellnum, spellprot, dur, res);
+  return MAGIC_SUCCESS;
 }
 
 /* This function is used to provide services to mag_groups.  This function is
  * the one you should change to add new group spells. */
-static void perform_mag_groups(int level, struct char_data *ch,
-			struct char_data *tch, int spellnum, int savetype)
+static int perform_mag_groups(int level, struct char_data *ch, 
+                           struct char_data *tch, int spellnum, int savetype)
 {
+  int ret_flags = 0;
+
   switch (spellnum) {
     case SPELL_GROUP_HEAL:
-    mag_points(level, ch, tch, SPELL_HEAL, savetype);
+    ret_flags = mag_points(level, ch, tch, SPELL_HEAL, savetype);
     break;
   case SPELL_GROUP_ARMOR:
-    mag_affects(level, ch, tch, SPELL_ARMOR, savetype);
+    ret_flags = mag_affects(level, ch, tch, SPELL_ARMOR, savetype);
     break;
   case SPELL_GROUP_RECALL:
     spell_recall(level, ch, tch, NULL);
+    ret_flags = MAGIC_SUCCESS;
     break;
   }
+
+  return ret_flags;
 }
 
 /* Every spell that affects the group should run through here perform_mag_groups
@@ -416,30 +422,40 @@ static void perform_mag_groups(int level, struct char_data *ch,
  * affect everyone grouped with the caster who is in the room, caster last. To
  * add new group spells, you shouldn't have to change anything in mag_groups.
  * Just add a new case to perform_mag_groups. */
-void mag_groups(int level, struct char_data *ch, int spellnum, int savetype)
+int mag_groups(int level, struct char_data *ch, int spellnum, int savetype)
 {
+  int ret_flags = 0;
+
   struct char_data *tch;
 
   if (ch == NULL)
-    return;
+    return MAGIC_FAILED;
 
   if (!GROUP(ch))
-    return;
+    return MAGIC_FAILED;
     
   while ((tch = (struct char_data *) simple_list(GROUP(ch)->members)) != NULL) {
     if (IN_ROOM(tch) != IN_ROOM(ch))
       continue;
     if (tch == ch)
       continue;
-    perform_mag_groups(level, ch, tch, spellnum, savetype);
+    ret_flags |= perform_mag_groups(level, ch, tch, spellnum, savetype);
   }
-  perform_mag_groups(level, ch, ch, spellnum, savetype);
+  ret_flags |= perform_mag_groups(level, ch, ch, spellnum, savetype);
+
+  if (ret_flags & MAGIC_SUCCESS)
+    return MAGIC_SUCCESS;
+
+  if (ret_flags == MAGIC_FAILED)
+    return MAGIC_FAILED;
+
+  return MAGIC_NOEFFECT;
 }
 
 
 /* Mass spells affect every creature in the room except the caster. No spells
  * of this class currently implemented. */
-void mag_masses(int level, struct char_data *ch, int spellnum, int savetype)
+int mag_masses(int level, struct char_data *ch, int spellnum, int savetype)
 {
   struct char_data *tch, *tch_next;
 
@@ -451,19 +467,23 @@ void mag_masses(int level, struct char_data *ch, int spellnum, int savetype)
     switch (spellnum) {
     }
   }
+
+  // return NOEFFECT for now since mag_masses doesn't support any spells yet.
+  return MAGIC_NOEFFECT;
 }
 
 /* Every spell that affects an area (room) runs through here.  These are
  * generally offensive spells.  This calls mag_damage to do the actual damage.
  * All spells listed here must also have a case in mag_damage() in order for
  * them to work. Area spells have limited targets within the room. */
-void mag_areas(int level, struct char_data *ch, int spellnum, int savetype)
+int mag_areas(int level, struct char_data *ch, int spellnum, int savetype)
 {
   struct char_data *tch, *next_tch;
   struct str_spells *spell;
+  int effect = 0;
 
   if (ch == NULL)
-    return;
+    return MAGIC_FAILED;
 
   spell = get_spell_by_vnum(spellnum);
 
@@ -489,8 +509,14 @@ void mag_areas(int level, struct char_data *ch, int spellnum, int savetype)
 	if ((spellnum == SPELL_EARTHQUAKE) && AFF_FLAGGED(tch, AFF_FLYING))
 	  continue;
     /* Doesn't matter if they die here so we don't check. -gg 6/24/98 */
+    effect++;
     mag_damage(level, ch, tch, spellnum, 1);
   }
+
+  if (effect) 
+    return MAGIC_SUCCESS;
+  else
+    return MAGIC_NOEFFECT;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -509,7 +535,7 @@ static const char *mag_summon_fail_msgs[] = {
   "There is no corpse!\r\n"
 };
 
-void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
+int mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 		      int spellnum, int savetype)
 {
   struct char_data *mob = NULL;
@@ -521,19 +547,19 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
   int rts_code;
 
   if (ch == NULL)
-    return;
+    return MAGIC_FAILED;
 
   spell = get_spell_by_vnum(spellnum);
 
   if (!spell) {
     log("SYSERR: unknown spellnum %d passed to mag_summons.", spellnum);
-    return;
+    return MAGIC_FAILED;
   }
 
   if (spellnum == SPELL_ANIMATE_DEAD) {
     if (obj == NULL || !IS_CORPSE(obj)) {
       act(mag_summon_fail_msgs[7], FALSE, ch, 0, 0, TO_CHAR);
-      return;
+      return MAGIC_FAILED;
     }
     handle_corpse = TRUE;
   }
@@ -543,7 +569,7 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
     mob_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_mob, &rts_code);
   else {
     log("SYSERR: No mobile to summon at mag_summons.");
-    return;
+    return MAGIC_FAILED;
   }
 
   if (spell->summon_req) {
@@ -556,17 +582,17 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 
   if (AFF_FLAGGED(ch, AFF_CHARM)) {
     send_to_char(ch, "You are too giddy to have any followers!\r\n");
-    return;
+    return MAGIC_NOEFFECT;
   }
 
   if (rand_number(0, 101) < pfail) {
     send_to_char(ch, "%s", mag_summon_fail_msgs[fmsg]);
-    return;
+    return MAGIC_NOEFFECT; // since we send a special fail message, return NOEFFECT makes more sens.
   }
 
   if (!(mob = read_mobile(mob_num, VIRTUAL))) {
     send_to_char(ch, "You don't quite remember how to make that creature.\r\n");
-    return;
+    return MAGIC_NOEFFECT;
   }
   char_to_room(mob, IN_ROOM(ch));
   IS_CARRYING_W(mob) = 0;
@@ -593,6 +619,7 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
     }
     extract_obj(obj);
   }
+  return MAGIC_SUCCESS;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -600,44 +627,52 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 /*----------------------------------------------------------------------------*/
 
 
-void mag_points(int level, struct char_data *ch, struct char_data *victim,
-		     int spellnum, int savetype)
+int mag_points(int level, struct char_data *ch, struct char_data *victim,
+               int spellnum, int savetype)
 {
   struct str_spells *spell;
 
-  int hp, mana, move, gold, rts_code;
+  int hp, mana, move, gold, rts_code, effect = 0;;
 
   if (victim == NULL)
-    return;
+    return MAGIC_FAILED;
 
   spell = get_spell_by_vnum(spellnum);
 
   if (!spell) {
     log("SYSERR: unknown spellnum %d passed to mag_points.", spellnum);
-    return;
+    return MAGIC_FAILED;
   }
 
   if (spell->points.hp) {
     hp = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.hp, &rts_code);
     GET_HIT(victim) = MIN(GET_MAX_HIT(victim), MAX(0, GET_HIT(victim) + hp));
+    effect++;
   }
 
   if (spell->points.mana) {
     mana = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.mana, &rts_code);
     GET_MANA(victim) = MIN(GET_MAX_MANA(victim), MAX(0, GET_MANA(victim) + mana));
+    effect++;
   }
 
   if (spell->points.move) {
     move = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.move, &rts_code);
     GET_MOVE(victim) = MIN(GET_MAX_MOVE(victim), MAX(0, GET_MOVE(victim) + move));
+    effect++;
   }
 
   if (spell->points.gold) {
     gold = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.gold, &rts_code);
     GET_GOLD(victim) = MAX(0, GET_GOLD(victim) + gold);
+    effect++;
   }
 
   update_pos(victim);
+  if (effect)
+    return MAGIC_SUCCESS;
+  else
+    return MAGIC_NOEFFECT;
 }
 
 int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
@@ -647,12 +682,12 @@ int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
   struct str_spells *spell;
 
   if (victim == NULL)
-    return SPELL_FAILED;
+    return MAGIC_FAILED;
 
   spell = get_spell_by_vnum(spellnum);
   if (!spell) {
     log("SYSERR: unknown spellnum %d passed to mag_unaffects.", spellnum);
-    return SPELL_FAILED;
+    return MAGIC_FAILED;
   } 
 
   // complementary messages for the spell HEAL.
@@ -674,25 +709,24 @@ int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
   }
 
   if (effect)
-    return SPELL_SUCCESS;
+    return MAGIC_SUCCESS;
   else
-    return SPELL_NOEFFECT;
+    return MAGIC_NOEFFECT;
 }
 
-void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
+int mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
 		         int spellnum, int savetype)
 {
-  const char *to_char = NULL, *to_room = NULL;
+  int effect = 1;
 
   if (obj == NULL)
-    return;
+    return MAGIC_FAILED;
 
   switch (spellnum) {
     case SPELL_BLESS:
       if (!OBJ_FLAGGED(obj, ITEM_BLESS) &&
 	  (GET_OBJ_WEIGHT(obj) <= 5 * GET_LEVEL(ch))) {
 	SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_BLESS);
-	to_char = "$p glows briefly.";
       }
       break;
     case SPELL_CURSE:
@@ -700,21 +734,18 @@ void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
 	SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_NODROP);
 	if (GET_OBJ_TYPE(obj) == ITEM_WEAPON)
 	  GET_OBJ_VAL(obj, 2)--;
-	to_char = "$p briefly glows red.";
       }
       break;
     case SPELL_INVISIBLE:
       if (!OBJ_FLAGGED(obj, ITEM_NOINVIS) && !OBJ_FLAGGED(obj, ITEM_INVISIBLE)) {
         SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_INVISIBLE);
-        to_char = "$p vanishes.";
       }
       break;
     case SPELL_POISON:
       if (((GET_OBJ_TYPE(obj) == ITEM_DRINKCON) ||
          (GET_OBJ_TYPE(obj) == ITEM_FOUNTAIN) ||
          (GET_OBJ_TYPE(obj) == ITEM_FOOD)) && !GET_OBJ_VAL(obj, 3)) {
-      GET_OBJ_VAL(obj, 3) = 1;
-      to_char = "$p steams briefly.";
+        GET_OBJ_VAL(obj, 3) = 1;
       }
       break;
     case SPELL_REMOVE_CURSE:
@@ -722,7 +753,6 @@ void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
         REMOVE_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_NODROP);
         if (GET_OBJ_TYPE(obj) == ITEM_WEAPON)
           GET_OBJ_VAL(obj, 2)++;
-        to_char = "$p briefly glows blue.";
       }
       break;
     case SPELL_REMOVE_POISON:
@@ -730,39 +760,32 @@ void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
          (GET_OBJ_TYPE(obj) == ITEM_FOUNTAIN) ||
          (GET_OBJ_TYPE(obj) == ITEM_FOOD)) && GET_OBJ_VAL(obj, 3)) {
         GET_OBJ_VAL(obj, 3) = 0;
-        to_char = "$p steams briefly.";
       }
       break;
+    default: effect = 0;
   }
 
-/*
-  if (to_char == NULL)
-    send_to_char(ch, "%s", CONFIG_NOEFFECT);
+  if (effect)
+    return MAGIC_SUCCESS;
   else
-    act(to_char, TRUE, ch, obj, 0, TO_CHAR);
-
-  if (to_room != NULL)
-    act(to_room, TRUE, ch, obj, 0, TO_ROOM);
-  else if (to_char != NULL)
-    act(to_char, TRUE, ch, obj, 0, TO_ROOM);
-*/
+    return MAGIC_NOEFFECT;
 }
 
-void mag_creations(int level, struct char_data *ch, int spellnum)
+int mag_creations(int level, struct char_data *ch, int spellnum)
 {
   struct obj_data *tobj;
   struct str_spells *spell;
   obj_vnum z;
-  int i, rts_code;
+  int i, rts_code, effect = 0, goofed = 0;
 
   if (ch == NULL)
-    return;
+    return MAGIC_FAILED;
 
   spell = get_spell_by_vnum(spellnum);
 
   if (!spell) {
     log("SYSERR: spell_creations, spell %d not found", spellnum);
-    return; 
+    return MAGIC_FAILED; 
   }
 
   for (i=0; i<MAX_SPELL_OBJECTS; i++) {
@@ -771,28 +794,36 @@ void mag_creations(int level, struct char_data *ch, int spellnum)
 
       if (!rts_code) {
         if (!(tobj = read_object(z, VIRTUAL))) {
-          send_to_char(ch, "I seem to have goofed.\r\n");
+          goofed = 1;
           log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum, z);
         } else {
             obj_to_char(tobj, ch);
             act("$n creates $p.", FALSE, ch, tobj, 0, TO_ROOM);
             act("You create $p.", FALSE, ch, tobj, 0, TO_CHAR);
             load_otrigger(tobj);
+            effect++;
           }
       }  else
            log("SYSERR: spell_creations, formula interpreter failed on spell %d", spellnum);
     }
   }
+   
+  // special message, if object(s) creation failed.
+  if (goofed)
+    send_to_char(ch, "I seem to have %sgoofed.\r\n", effect ? "a little " : "");
+
+  if (effect)
+    return MAGIC_SUCCESS;
+  else
+    return MAGIC_NOEFFECT;
 }
 
-void mag_rooms(int level, struct char_data *ch, int spellnum)
+int mag_rooms(int level, struct char_data *ch, int spellnum)
 {
   room_rnum rnum;
   int duration = 0;
   bool failure = FALSE;
   event_id IdNum = eNULL;
-  const char *msg = NULL;
-  const char *room = NULL;
   
   rnum = IN_ROOM(ch);
   
@@ -807,20 +838,14 @@ void mag_rooms(int level, struct char_data *ch, int spellnum)
         
       duration = 5;
       SET_BIT_AR(ROOM_FLAGS(rnum), ROOM_DARK);
-        
-      msg = "You cast a shroud of darkness upon the area.";
-      room = "$n casts a shroud of darkness upon this area.";
     break;
   
   }
   
-  if (failure || IdNum == eNULL) {
-    send_to_char(ch, "You failed!\r\n");
-    return;
-  }
-  
-  send_to_char(ch, "%s\r\n", msg);
-  act(room, FALSE, ch, 0, 0, TO_ROOM);
+  if (failure || IdNum == eNULL)
+    return MAGIC_FAILED;
   
   NEW_EVENT(eSPL_DARKNESS, &world[rnum], NULL, duration * PASSES_PER_SEC);
+
+  return MAGIC_SUCCESS;
 }

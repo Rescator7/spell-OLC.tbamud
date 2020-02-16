@@ -158,6 +158,7 @@ void create_build_in_spells()
  new_spell->applies[1].appl_num = APPLY_SAVING_SPELL;
  new_spell->applies[1].modifier = strdup("-1");
  new_spell->applies[1].duration = strdup("6");
+ new_spell->messages.to_self = strdup("$b glows briefly.");
  new_spell->messages.to_vict = strdup("You feel righteous.");
  new_spell->messages.wear_off = strdup("You feel less righteous.");
 
@@ -191,7 +192,7 @@ void create_build_in_spells()
  new_spell->applies[2].appl_num = AFF_BLIND + NUM_APPLIES;
  new_spell->applies[2].duration = strdup("2");
  new_spell->messages.to_vict = strdup("You have been blinded!");
- new_spell->messages.to_room = strdup("$n seems to be blinded!");
+ new_spell->messages.to_room = strdup("$N seems to be blinded!");
  new_spell->messages.wear_off = strdup("You feel a cloak of blindness dissolve.");
 
  spedit_save_internally(new_spell);
@@ -303,7 +304,7 @@ void create_build_in_spells()
  new_spell->assign[0].class_num = CLASS_MAGIC_USER;
  new_spell->assign[0].level = 30;
  new_spell->assign[0].num_mana = strdup(buf);
- new_spell->messages.to_room = strdup("$n magically divides!");
+ new_spell->messages.to_room = strdup("$N magically divides!");
 
  spedit_save_internally(new_spell);
 
@@ -404,7 +405,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 4;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("Your vision returns!");
- new_spell->messages.to_room = strdup("There's a momentary gleam in $n's eyes.");
+ new_spell->messages.to_room = strdup("There's a momentary gleam in $N's eyes.");
  new_spell->dispel[0] = strdup("4");  // spell VNUM 4 = Blindness
 
  spedit_save_internally(new_spell);
@@ -473,8 +474,9 @@ void create_build_in_spells()
  new_spell->applies[1].duration = strdup("1 + (self.level / 2)");
  new_spell->applies[2].appl_num = AFF_CURSE + NUM_APPLIES;
  new_spell->applies[2].duration = strdup("1 + (self.level / 2)");
+ new_spell->messages.to_self = strdup("$b briefly glows red.");
  new_spell->messages.to_vict = strdup("You feel very uncomfortable.");
- new_spell->messages.to_room = strdup("$n briefly glows red!");
+ new_spell->messages.to_room = strdup("$N briefly glows red!");
  new_spell->messages.wear_off = strdup("You feel more optimistic.");
 
  spedit_save_internally(new_spell);
@@ -615,7 +617,7 @@ void create_build_in_spells()
  new_spell->damages = strdup("dice(2, 8) + self.level");
  new_spell->max_dam = 100;
  new_spell->messages.to_self = strdup("You gesture and the earth begins to shake all around you!");
- new_spell->messages.to_room = strdup("$n gracefully gestures and the earth begins to shake violently!");
+ new_spell->messages.to_room = strdup("$N gracefully gestures and the earth begins to shake violently!");
 
  spedit_save_internally(new_spell);
 
@@ -745,8 +747,9 @@ void create_build_in_spells()
  new_spell->applies[0].duration = strdup("12 + (self.level / 4)");
  new_spell->applies[1].appl_num = AFF_INVISIBLE + NUM_APPLIES;
  new_spell->applies[1].duration = strdup("12 + (self.level / 4)");
+ new_spell->messages.to_self = strdup("$b vanishes.");
  new_spell->messages.to_vict = strdup("You vanish.");
- new_spell->messages.to_room = strdup("$n slowly fades out of existence.");
+ new_spell->messages.to_room = strdup("$N slowly fades out of existence.");
  new_spell->messages.wear_off = strdup("You feel yourself exposed.");
 
  spedit_save_internally(new_spell);
@@ -837,8 +840,9 @@ void create_build_in_spells()
  new_spell->applies[0].duration = strdup("self.level");
  new_spell->applies[1].appl_num = AFF_POISON + NUM_APPLIES;
  new_spell->applies[1].duration = strdup("self.level");
+ new_spell->messages.to_self = strdup("$b steams briefly.");
  new_spell->messages.to_vict = strdup("You feel very sick.");
- new_spell->messages.to_room = strdup("$n gets violently ill!");
+ new_spell->messages.to_room = strdup("$N gets violently ill!");
  new_spell->messages.wear_off = strdup("You feel less sick.");
 
  spedit_save_internally(new_spell);
@@ -883,6 +887,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 26;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->dispel[0] = strdup("17"); // dispel curse
+ new_spell->messages.to_self = strdup("$b briefly glows blue.");
  new_spell->messages.to_vict = strdup("You don't feel so unlucky.");
 
  spedit_save_internally(new_spell);
@@ -906,7 +911,7 @@ void create_build_in_spells()
  new_spell->applies[0].appl_num = AFF_SANCTUARY + NUM_APPLIES;
  new_spell->applies[0].duration = strdup("4");
  new_spell->messages.to_vict = strdup("A white aura momentarily surrounds you.");
- new_spell->messages.to_room = strdup("$n is surrounded by a white aura.");
+ new_spell->messages.to_room = strdup("$N is surrounded by a white aura.");
  new_spell->messages.wear_off = strdup("The white aura around your body fades.");
 
  spedit_save_internally(new_spell);
@@ -952,7 +957,7 @@ void create_build_in_spells()
  new_spell->applies[0].duration = strdup("self.level / 4 + 4");
  new_spell->messages.wear_off = strdup("You feel less tired.");
  new_spell->messages.to_vict = strdup("You feel very sleepy...  Zzzz......");
- new_spell->messages.to_room = strdup("$n goes to sleep.");
+ new_spell->messages.to_room = strdup("$N goes to sleep.");
 
  spedit_save_internally(new_spell);
 
@@ -1049,8 +1054,9 @@ void create_build_in_spells()
  new_spell->assign[0].level = 10;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->dispel[0] = strdup("33");  // remove poison
+ new_spell->messages.to_self = strdup("$b steams briefly.");
  new_spell->messages.to_vict = strdup("A warm feeling runs through your body!");
- new_spell->messages.to_room = strdup("$n looks better."); 
+ new_spell->messages.to_room = strdup("$N looks better."); 
 
  spedit_save_internally(new_spell);
 
@@ -1092,7 +1098,7 @@ void create_build_in_spells()
  new_spell->summon_mob = strdup("11");
  sprintf(buf, "(35 - (3 * self.level)) > 10 ? (35 - (3 * self.level)) : 10");
  new_spell->assign[0].num_mana = strdup(buf);
- new_spell->messages.to_room = strdup("$n animates a corpse!");
+ new_spell->messages.to_room = strdup("$N animates a corpse!");
 
  spedit_save_internally(new_spell);
 
@@ -1189,7 +1195,7 @@ void create_build_in_spells()
  new_spell->applies[0].appl_num = AFF_INFRAVISION + NUM_APPLIES;
  new_spell->applies[0].duration = strdup("12 + self.level");
  new_spell->messages.to_vict = strdup("Your eyes glow red.");
- new_spell->messages.to_room = strdup("$n's eyes glow red.");
+ new_spell->messages.to_room = strdup("$N's eyes glow red.");
  new_spell->messages.wear_off = strdup("Your night vision seems to fade.");
 
  spedit_save_internally(new_spell);
@@ -1277,6 +1283,8 @@ void create_build_in_spells()
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 12;
  new_spell->assign[0].num_mana = strdup(buf);
+ new_spell->messages.to_self = strdup("You cast a shroud of darkness upon the area.");
+ new_spell->messages.to_room = strdup("$N casts a shroud of darkness upon this area.");
 
  spedit_save_internally(new_spell);
 

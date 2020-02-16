@@ -139,7 +139,7 @@ SPECIAL(guild)
     send_to_char(ch, "'%s' doesn't exists.\r\n", argument);
     return (TRUE);
   }
-  level = get_spell_level_by_vnum(skill_num, GET_CLASS(ch));
+  level = get_spell_level(skill_num, GET_CLASS(ch));
 
   if ((skill_num < 1) || (level == -1) || (GET_LEVEL(ch) < level)) {
     send_to_char(ch, "You do not know of that %s.\r\n", spell->type == SPELL ? "spell" : "skill");

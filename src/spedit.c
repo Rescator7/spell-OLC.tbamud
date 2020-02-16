@@ -20,22 +20,14 @@
 #define SAFE_FREE(str) if(str) free(str)
 #define BUFSIZE 2048
 
+// global variable
 struct str_spells *list_spells = NULL;
-
+int last_spell_vnum = 0;
 char *UNDEF_SPELL = "Undefined";
-
-int IS_SPELL_CLASS(struct str_spells *spell, int class) {
-  int i;
-
-  for (i=0; i<NUM_CLASSES; i++)
-    if (spell->assign[i].class_num == class)
-      return 1;
-  return 0;
-}
 
 // return a pointer on the player's name that is editing the spell vnum, or NULL if not edited.
 // The name will be used to says: Spell is edited by: <name>.
-// but, it can also be used to check if a SPELL VNUM is edited. Even, if we don't needs the name.
+// but, it can also be used to check if a SPELL VNUM is edited.
 char *SPELL_OLCING_BY (int vnum) 
 {
  struct descriptor_data *q;
@@ -132,14 +124,25 @@ int find_spell_assign (struct char_data *ch, struct str_spells *ptr)
  return -1;
 }
 
-char *get_spell_wear_off (int vnum) 
+int get_spell_class(struct str_spells *spell, int class) {
+  int i;
+
+  for (i=0; i<NUM_CLASSES; i++)
+    if (spell->assign[i].class_num == class)
+      return i;
+  return -1;
+}
+
+int get_spell_mag_flags(int vnum)
 {
  struct str_spells *Q;
 
  for (Q = list_spells; Q; Q=Q->next)
    if (Q->vnum == vnum)
-     return (Q->messages.wear_off);
- return NULL;
+     return (Q->mag_flags);
+
+ log("SYSERR: Spell vnum %d not found at get_spell_mag_flags.", vnum);
+ return 0;
 }
 
 int get_spell_apply(struct str_spells *spell, int pos)
@@ -163,25 +166,12 @@ char *get_spell_name(int vnum)
  return UNDEF_SPELL;
 }
 
-int find_spell_by_vnum (int vnum)
-{
-  struct str_spells *ptr;
-
-  for (ptr = list_spells; ptr; ptr = ptr->next)
-    if (ptr->vnum == vnum) 
-      return vnum;
-  return 0;
-}
-
 int find_skill_num (char *name) {
   struct str_spells *ptr;
   int first = -1; 
   int cpt = 0;
 
   for (ptr = list_spells; ptr; ptr = ptr->next) {
-    // we search skill only
-//    if (ptr->type != SKILL) continue;
-
     // exact match
     if (!str_cmp(name, ptr->name))
       return ptr->vnum;
@@ -210,7 +200,7 @@ struct str_spells *get_spell_by_vnum(int vnum)
 }
 
 // check all the assigned classes.
-int get_spell_level_by_vnum(int vnum, int class)
+int get_spell_level(int vnum, int class)
 {
  int i;
  struct str_spells *spell = get_spell_by_vnum(vnum);
@@ -233,7 +223,7 @@ struct str_spells *get_spell_by_name(char *name, char type)
   return NULL;
 }
 
-int find_spell_by_name (struct descriptor_data *d, char *name) 
+int olc_spell_by_name (struct descriptor_data *d, char *name) 
 {
   struct str_spells *ptr;
 
@@ -480,6 +470,9 @@ void spedit_show_warnings (struct descriptor_data *d) {
 
   if ((len < bSIZE) && OLC_SPELL(d)->damages && !OLC_SPELL(d)->max_dam)
     len += snprintf(buf + len, bSIZE - len, "Damages is set, but max damages is set to 0.\r\n");
+
+  if ((len < bSIZE) && !OLC_SPELL(d)->targ_flags)
+    len += snprintf(buf + len, bSIZE - len, "No target flags set.\r\n");
 
   if (*buf)
     send_to_char (d->character, "\r\n%s", buf);
@@ -779,6 +772,9 @@ void spedit_save_internally (struct str_spells *spell)
    return;
  }
 
+ if (spell->vnum > last_spell_vnum)
+   last_spell_vnum = spell->vnum;
+
  if (p)
    p->next = spell;
  else
@@ -862,15 +858,16 @@ int spedit_create_spell (struct descriptor_data *d)
  // if OLC_NUM(d) == 0 that means we want to create a new spell,
  // if so we start from last VNUM + 1 and we search for the first
  // free VNUM that isn't OLCING by someone else.
- if (!OLC_NUM(d))
+ if (!OLC_NUM(d)) {
    while (SPELL_OLCING_BY(++vnum));
 
- if (vnum > MAX_SKILLS) {
-   mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: Spedit: Skills and spells limits reached.");
-   return 0;
- }
+   if (vnum > MAX_SKILLS) {
+     mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: Spedit: Skills and spells limits reached.");
+     return 0;
+   }
 
- OLC_NUM(d) = vnum;
+   OLC_NUM(d) = vnum;
+ }
 
  CREATE (OLC_SPELL(d), struct str_spells, 1);
  OLC_SPELL(d)->vnum = OLC_NUM(d);
@@ -1360,38 +1357,57 @@ int spedit_setup2 (struct descriptor_data *d)
 int spedit_setup (struct descriptor_data *d)
 {
  char buf[BUFSIZE];
-
  char *str;
+ const char *name;
  int vnum;
  
- if (OLC_STORAGE(d)) {
-   if (is_number(OLC_STORAGE(d))) 
-     vnum = find_spell_by_vnum(atoi(OLC_STORAGE(d))); 
-   else
-     vnum = find_spell_by_name(d, OLC_STORAGE(d));
+ OLC_NUM(d) = 0;
 
+ if (OLC_STORAGE(d)) {
+   if (is_number(OLC_STORAGE(d)))
+     vnum = atoi(OLC_STORAGE(d));
+   else
+     vnum = olc_spell_by_name(d, OLC_STORAGE(d));
+
+   // we don't allow to edit spell vnum 0 anyway.
    if (!vnum) {
      send_to_char (d->character, "that spell could not be found!\r\n");
      cleanup_olc (d, CLEANUP_ALL);
      return 0;
    } else {
+       if (vnum < 0) {
+         send_to_char (d->character, "The spell (vnum: %d) must be above 0.\r\n", vnum);
+         cleanup_olc (d, CLEANUP_ALL);
+         return 0;
+       }
+
+       if (vnum > last_spell_vnum) {
+         send_to_char (d->character, "This spell (vnum: %d) is out of bound. Try 'spedit' to create a new spell.\r\n", vnum);
+         cleanup_olc (d, CLEANUP_ALL);
+         return 0;
+       } 
+
+       name = get_spell_name(vnum);
+
        if ((str = SPELL_OLCING_BY (vnum))) {
-         sprintf (buf, "This spell '%s' (vnum: %d) is already edited by %s.\r\n", get_spell_name(vnum), vnum, str);
+         sprintf (buf, "This spell '%s' (vnum: %d) is already edited by %s.\r\n", name, vnum, str);
          send_to_char (d->character, "%s", buf);  
          cleanup_olc (d, CLEANUP_ALL);
          return 0;
        }
 
        OLC_NUM(d) = vnum;
-       sprintf (buf, "Do you want to edit '%s' (vnum: %d)? (y/n%s): ", get_spell_name(vnum), vnum, 
-                     OLC_SEARCH(d) ? ", q" : "");
-       send_to_char (d->character, "%s", buf);  
-       OLC_MODE(d) = SPEDIT_CONFIRM_EDIT;
-       return 1;
+
+       if (name != UNDEF_SPELL) {
+         sprintf (buf, "Do you want to edit '%s' (vnum: %d)? (y/n%s): ", name, vnum, 
+                       OLC_SEARCH(d) ? ", q" : "");
+         send_to_char (d->character, "%s", buf);  
+         OLC_MODE(d) = SPEDIT_CONFIRM_EDIT;
+         return 1;
+       }
      }
  }
 
- OLC_NUM(d) = 0;
  spedit_setup2(d);
  return 1;
 }
@@ -1477,7 +1493,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                                   spedit_protection_menu (d);
                                 else {
                                   int vnum = atoi(arg);
-                                  if (!find_spell_by_vnum(vnum)) {
+                                  if (!get_spell_by_vnum(vnum)) {
                                     send_to_char (d->character, "Invalid: spell not found!\r\n"
                                                                 "\r\nSpell VNUM (0 to quit, 'r' to remove) : ");
                                   } else {
@@ -1967,7 +1983,7 @@ ACMD(do_spedit) {
   if (*argument)
     OLC_STORAGE(d) = strdup(argument);
   else
-    OLC_STORAGE(d) = NULL;  // remove? olc_cleanup is supposed to remove and NULL the pointer
+    OLC_STORAGE(d) = NULL;
  
   STATE(d) = CON_SPEDIT;
 
@@ -1982,6 +1998,7 @@ ACMD(do_splist) {
  int search_by_part_name = 0;
  int search_disabled = 0;
  int search_not_assigned = 0;
+ int search_by_skill = 0;
  size_t len = 0, tmp_len = 0;
 
  struct str_spells *ptr;
@@ -1990,6 +2007,7 @@ ACMD(do_splist) {
 
  if (!*argument) {
    send_to_char(ch, "splist all - list all spells\r\n"
+                    "splist sk  - list all skills\r\n"
                     "splist mu  - list all spells in class magical user\r\n" 
                     "splist cl  - list all spells in class cleric\r\n" 
                     "splist th  - list all spells in class thief\r\n" 
@@ -2012,6 +2030,9 @@ ACMD(do_splist) {
  if(!strcmp(argument, "wa"))
    search_by_class = CLASS_WARRIOR;
  else
+ if(!strcmp(argument, "sk"))
+   search_by_skill = 1;
+ else
  if(!strcmp(argument, "off")) 
    search_disabled = 1;
  else
@@ -2030,21 +2051,23 @@ ACMD(do_splist) {
    char classes[80] = "";
    int mu, cl, th, wa;
 
-   if ((mu = IS_SPELL_CLASS(ptr, CLASS_MAGIC_USER))) strcat(classes, "Mu ");
+   if ((mu = (get_spell_class(ptr, CLASS_MAGIC_USER) != -1))) strcat(classes, "Mu ");
    if ((search_by_class == CLASS_MAGIC_USER) && !mu) continue;
 
-   if ((cl = IS_SPELL_CLASS(ptr, CLASS_CLERIC))) strcat(classes, "Cl ");
+   if ((cl = (get_spell_class(ptr, CLASS_CLERIC) != -1))) strcat(classes, "Cl ");
    if ((search_by_class == CLASS_CLERIC) && !cl) continue;
 
-   if ((th = IS_SPELL_CLASS(ptr, CLASS_THIEF))) strcat(classes, "Th ");
+   if ((th = (get_spell_class(ptr, CLASS_THIEF) != -1))) strcat(classes, "Th ");
    if ((search_by_class == CLASS_THIEF) && !th) continue;
 
-   if ((wa = IS_SPELL_CLASS(ptr, CLASS_WARRIOR))) strcat(classes, "Wa");
+   if ((wa = (get_spell_class(ptr, CLASS_WARRIOR) != -1))) strcat(classes, "Wa");
    if ((search_by_class == CLASS_WARRIOR) && !wa) continue;
 
    if (search_disabled && (ptr->status == available)) continue;
 
    if ((mu || cl || th || wa) && search_not_assigned) continue;
+
+   if (search_by_skill && (ptr->type == SPELL)) continue;
 
    if (search_by_part_name && !strstr(ptr->name, argument)) continue;
 

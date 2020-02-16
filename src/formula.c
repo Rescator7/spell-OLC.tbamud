@@ -537,8 +537,19 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
  int cpt_dice = 0, cpt_comma = 0;
  int cpt_char = 1;
 
- if (!cmd) 
+ if (!self) {
+   *rts_code = ERROR_8000;
    return 0;
+ }
+
+ if (!cmd)  {
+   *rts_code = ERROR_8001;
+   return 0;
+ }
+
+ // if no vict, let's self act as the victim.
+ if (!vict)
+   vict = self;
 
  // remove all spaces in the formula, and truncate if cmd is bigger than my buffer 2048.
  buf[0] = ' ';
@@ -710,5 +721,5 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 ACMD(do_formula) {
  int rts_code;
 
- send_to_char (ch, "value: %d\r\n", formula_interpreter (ch, ch, 0, FALSE, argument, &rts_code));
+ send_to_char (ch, "value: %d\r\n", formula_interpreter (ch, 0, 0, FALSE, argument, &rts_code));
 }

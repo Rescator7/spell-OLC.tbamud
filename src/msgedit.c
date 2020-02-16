@@ -18,6 +18,7 @@
 #include "genolc.h"
 #include "interpreter.h"
 #include "modify.h"
+#include "spedit.h"
 
 /* Statics */
 static void free_messages_type(struct msg_type *msg);
@@ -160,9 +161,9 @@ static void show_messages(struct char_data *ch)
   for (i = 0; i < MAX_MESSAGES / 2; i++, half++)
     if (fight_messages[i].msg != NULL && len < sizeof(buf)) {
       count += fight_messages[i].number_of_attacks;
-      len += snprintf(buf + len, sizeof(buf) - len, "%-2d) [%-3d] %d, %-18s%s", i, fight_messages[i].a_type, fight_messages[i].number_of_attacks, fight_messages[i].a_type < TOP_SPELL_DEFINE ? spell_info[fight_messages[i].a_type].name : "Unknown", half < MAX_MESSAGES && fight_messages[half].msg ? "   " : "\r\n");
+      len += snprintf(buf + len, sizeof(buf) - len, "%-2d) [%-3d] %d, %-18s%s", i, fight_messages[i].a_type, fight_messages[i].number_of_attacks, get_spell_name(fight_messages[i].a_type), half < MAX_MESSAGES && fight_messages[half].msg ? "   " : "\r\n");
       if (half < MAX_MESSAGES && fight_messages[half].msg)
-        len += snprintf(buf + len, sizeof(buf) - len, "%-2d) [%-3d] %d, %-18s\r\n", half, fight_messages[half].a_type, fight_messages[half].number_of_attacks, fight_messages[half].a_type < TOP_SPELL_DEFINE ? spell_info[fight_messages[half].a_type].name : "Unknown");
+        len += snprintf(buf + len, sizeof(buf) - len, "%-2d) [%-3d] %d, %-18s\r\n", half, fight_messages[half].a_type, fight_messages[half].number_of_attacks, get_spell_name(fight_messages[half].a_type));
     }
     
   snprintf(buf + len, sizeof(buf) - len, "Total Messages: %d\r\n", count);  
@@ -188,7 +189,7 @@ void save_messages_to_disk(void)
     if (fight_messages[i].msg == NULL)
       continue;
     if (fight_messages[i].a_type > 0 && fight_messages[i].a_type < TOP_SPELL_DEFINE)
-      fprintf(fp, "* %s %d\n", PRINT_MSG(spell_info[fight_messages[i].a_type].name), fight_messages[i].a_type);
+      fprintf(fp, "* %s %d\n", get_spell_name(fight_messages[i].a_type), fight_messages[i].a_type);
     else
       fprintf(fp, "* %d\n", fight_messages[i].a_type);
              
@@ -357,7 +358,7 @@ static void msgedit_main_menu(struct descriptor_data * d)
   get_char_colors(d->character);
   
   write_to_output(d, "%sMsg Edit: %s[%s%dx%d%s] [%s$n: Attacker | $N: Victim%s]%s\r\n", cyn, grn, yel, OLC_NUM(d), OLC_MSG_LIST(d)->number_of_attacks, grn, yel, grn, nrm);
-  write_to_output(d, "%s1%s) %sAction Type: %s%d %s[%s%s%s]%s\r\n", grn, yel, cyn, yel, OLC_MSG_LIST(d)->a_type,  grn, yel, OLC_MSG_LIST(d)->a_type < TOP_SPELL_DEFINE ? spell_info[OLC_MSG_LIST(d)->a_type].name : "Unknown", grn, nrm);
+  write_to_output(d, "%s1%s) %sAction Type: %s%d %s[%s%s%s]%s\r\n", grn, yel, cyn, yel, OLC_MSG_LIST(d)->a_type,  grn, yel, get_spell_name(OLC_MSG_LIST(d)->a_type), grn, nrm);
    
   write_to_output(d, "   %sDeath Messages:\r\n"
                      "%sA%s) CHAR : %s %s\r\n"

@@ -23,12 +23,8 @@
 #include "spedit.h"
 #include "code.h"
 
-#define SINFO spell_info[spellnum]
-
 /* Global Variables definitions, used elsewhere */
-struct spell_info_type spell_info[TOP_SPELL_DEFINE + 1];
 char cast_arg2[MAX_INPUT_LENGTH];
-const char *unused_spellname = "!UNUSED!"; /* So we can get &unused_spellname */
 
 /* Local (File Scope) Function Prototypes */
 static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch, struct obj_data *tobj);
@@ -80,16 +76,32 @@ void call_ASPELL (void (*function) (), int level, struct char_data *ch,
  (*function)(level, ch, vict, obj);
 }
 
-void call_ACMD (void (*function) (), struct char_data *ch, char *argument, int cmd, int subcmd)
+void call_ACMD (void (*function) (), struct char_data *ch, 
+                char *argument, int cmd, int subcmd)
 {
  (*function)(ch, argument, cmd, subcmd);
 }
 
-int mag_manacost(struct char_data *ch, int spellnum)
+int mag_manacost(struct char_data *ch, struct char_data *tch, int spellnum)
 {
-  return MAX(SINFO.mana_max - (SINFO.mana_change *
-		    (GET_LEVEL(ch) - SINFO.min_level[(int) GET_CLASS(ch)])),
-	     SINFO.mana_min);
+  struct str_spells *spell;
+  int num, rts_code;
+
+  spell = get_spell_by_vnum(spellnum);
+
+  if (!spell) {
+    log("SYSERR: spell not found vnum %d passed to mag_manacost.", spellnum);
+    return 100; 
+  }
+
+  num = get_spell_class(spell, GET_CLASS(ch));
+  if (num == -1) {
+    log("SYSERR: spell vnum %d not assigned to class: %d"
+        ", passed to mag_manacost.", spellnum, GET_CLASS(ch));
+    return 100; 
+  }
+  
+  return formula_interpreter (ch, tch, spellnum, TRUE, spell->assign[num].num_mana, &rts_code);
 }
 
 static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
@@ -168,7 +180,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 {
   int savetype;
   int i, dur, res, rts_code; 
-  int ret_flags = 0;
+  int damages, flags = 0;
   struct str_spells *spell;
   struct affected_type *af;
 
@@ -201,19 +213,22 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     act("White light from no particular source suddenly fills the room, then vanishes.", FALSE, caster, 0, 0, TO_ROOM);
     return (0);
   }
-  if (cvict && MOB_FLAGGED(cvict, MOB_NOKILL)) {
-    send_to_char(caster, "This mob is protected.\r\n");
-    return (0);
-  }
 
-  for (af = cvict->affected; af; af = af->next)
-    if (IS_SET_AR(AFF_FLAGS(cvict), AFF_PROTECT) && (af->location == spellnum)) {
-    
-      if (af->modifier >= rand_number(0, 99)) {
-        send_to_char(caster, "%s is protected and resits your magic.\r\n", GET_NAME(cvict));
-        return (0); 
-      }
+  if (cvict) {
+    if (MOB_FLAGGED(cvict, MOB_NOKILL)) {
+      send_to_char(caster, "This mob is protected.\r\n");
+      return (0);
     }
+
+    for (af = cvict->affected; af; af = af->next)
+      if (IS_SET_AR(AFF_FLAGS(cvict), AFF_PROTECT) && (af->location == spellnum)) {
+    
+        if (af->modifier >= rand_number(0, 99)) {
+          send_to_char(caster, "%s is protected and resits your magic.\r\n", GET_NAME(cvict));
+          return (0); 
+        }
+      }
+  }
 
   /* determine the type of saving throw */
   switch (casttype) {
@@ -231,63 +246,67 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     break;
   }
 
-  if (spell->mag_flags & MAG_DAMAGE)
-    if (mag_damage(level, caster, cvict, spellnum, savetype) == -1)
+  if (spell->mag_flags & MAG_DAMAGE) {
+    if ((damages = mag_damage(level, caster, cvict, spellnum, savetype)) == -1)
       return (-1);	/* Successful and target died, don't cast again. */
+    if (damages)
+      flags = MAGIC_SUCCESS;
+  }
 
   if (spell->mag_flags & MAG_PROTECTION) {
     for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
       dur = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].duration, &rts_code);
       res = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].resist, &rts_code);
-      mag_protections(level, caster, cvict, spell->vnum, spell->protfrom[i].prot_num, dur, res);
+      flags |= mag_protections(level, caster, cvict, spell->vnum, spell->protfrom[i].prot_num, dur, res);
     }
   }
 
   if (spell->mag_flags & MAG_AFFECTS) 
-    ret_flags |= mag_affects(level, caster, cvict, spellnum, savetype);
+    flags |= mag_affects(level, caster, cvict, spellnum, savetype);
 
   if (spell->mag_flags & MAG_UNAFFECTS)
-    ret_flags |= mag_unaffects(level, caster, cvict, spellnum, savetype);
+    flags |= mag_unaffects(level, caster, cvict, spellnum, savetype);
 
   if (spell->mag_flags & MAG_POINTS)
-    mag_points(level, caster, cvict, spellnum, savetype);
+    flags |= mag_points(level, caster, cvict, spellnum, savetype);
 
   if (spell->mag_flags & MAG_ALTER_OBJS)
-    mag_alter_objs(level, caster, ovict, spellnum, savetype);
+    flags |= mag_alter_objs(level, caster, ovict, spellnum, savetype);
 
   if (spell->mag_flags & MAG_GROUPS)
-    mag_groups(level, caster, spellnum, savetype);
+    flags |= mag_groups(level, caster, spellnum, savetype);
 
   if (spell->mag_flags & MAG_MASSES)
-    mag_masses(level, caster, spellnum, savetype);
+    flags |= mag_masses(level, caster, spellnum, savetype);
 
   if (spell->mag_flags & MAG_AREAS)
-    mag_areas(level, caster, spellnum, savetype);
+    flags |= mag_areas(level, caster, spellnum, savetype);
 
   if (spell->mag_flags & MAG_SUMMONS)
-    mag_summons(level, caster, ovict, spellnum, savetype);
+    flags |= mag_summons(level, caster, ovict, spellnum, savetype);
 
   if (spell->mag_flags & MAG_CREATIONS)
-    mag_creations(level, caster, spellnum);
+    flags |= mag_creations(level, caster, spellnum);
 
   if (spell->mag_flags & MAG_ROOMS)
-    mag_rooms(level, caster, spellnum);
+    flags |= mag_rooms(level, caster, spellnum);
 
   if ((spell->mag_flags & MAG_MANUAL) && spell->function) 
     call_ASPELL (spell->function, GET_LEVEL(caster), caster, cvict, ovict);
 
-  if (ret_flags == SPELL_FAILED) 
+  if (flags & MAGIC_SUCCESS) {
+    if (spell->messages.to_self != NULL && (caster != cvict))
+      act(spell->messages.to_self, FALSE, caster, ovict, cvict, TO_CHAR);
+    if (spell->messages.to_vict != NULL && cvict)
+      act(spell->messages.to_vict, FALSE, cvict, ovict, 0, TO_CHAR);
+    if (spell->messages.to_room != NULL && cvict)
+      act(spell->messages.to_room, TRUE, caster, ovict, cvict, TO_ROOM);
+  }
+  else
+  if (flags & MAGIC_NOEFFECT)
+    send_to_char (caster, "%s", CONFIG_NOEFFECT);
+  else
     send_to_char (caster, "You failed!\r\n");
-  else if (ret_flags == SPELL_NOEFFECT)
-         send_to_char (caster, "%s", CONFIG_NOEFFECT);
-       else if (ret_flags & SPELL_SUCCESS) {
-              if ((caster != cvict) && (spell->messages.to_self != NULL))
-                act(spell->messages.to_self, FALSE, caster, 0, caster, TO_CHAR);
-              if (spell->messages.to_vict != NULL)
-                act(spell->messages.to_vict, FALSE, cvict, 0, caster, TO_CHAR);
-              if (spell->messages.to_room != NULL)
-                act(spell->messages.to_room, TRUE, cvict, 0, caster, TO_ROOM);
-            }
 
   return (1);
 }
@@ -333,7 +352,7 @@ void mag_objectmagic(struct char_data *ch, struct obj_data *obj,
 
       /* Area/mass spells on staves can cause crashes. So we use special cases
        * for those spells spells here. */
-      if (HAS_SPELL_ROUTINE(GET_OBJ_VAL(obj, 3), MAG_MASSES | MAG_AREAS)) {
+      if (IS_SET(get_spell_mag_flags(GET_OBJ_VAL(obj, 3)), MAG_MASSES | MAG_AREAS)) {
         for (i = 0, tch = world[IN_ROOM(ch)].people; tch; tch = tch->next_in_room)
 	  i++;
 	while (i-- > 0)
@@ -365,7 +384,7 @@ void mag_objectmagic(struct char_data *ch, struct obj_data *obj,
 	act(obj->action_description, FALSE, ch, obj, tobj, TO_ROOM);
       else
 	act("$n points $p at $P.", TRUE, ch, obj, tobj, TO_ROOM);
-    } else if (IS_SET(spell_info[GET_OBJ_VAL(obj, 3)].routines, MAG_AREAS | MAG_MASSES)) {
+    } else if (IS_SET(get_spell_mag_flags(GET_OBJ_VAL(obj, 3)), MAG_AREAS | MAG_MASSES)) {
       /* Wands with area spells don't need to be pointed. */
       act("You point $p outward.", FALSE, ch, obj, NULL, TO_CHAR);
       act("$n points $p outward.", TRUE, ch, obj, NULL, TO_ROOM);
@@ -644,32 +663,6 @@ ACMD(do_old_cast)
 }
 */
 
-// verify
-void spell_level(int spell, int chclass, int level)
-{
-  int bad = 0;
-
-  if (spell < 0 || spell > TOP_SPELL_DEFINE) {
-    log("SYSERR: attempting assign to illegal spellnum %d/%d", spell, TOP_SPELL_DEFINE);
-    return;
-  }
-
-  if (chclass < 0 || chclass >= NUM_CLASSES) {
-    log("SYSERR: assigning '%s' to illegal class %d/%d.", skill_name(spell),
-		chclass, NUM_CLASSES - 1);
-    bad = 1;
-  }
-
-  if (level < 1 || level > LVL_IMPL) {
-    log("SYSERR: assigning '%s' to illegal level %d/%d.", skill_name(spell),
-		level, LVL_IMPL);
-    bad = 1;
-  }
-
-  if (!bad)
-    spell_info[spell].min_level[chclass] = level;
-}
-
 ACMD(do_cast)
 {
  char *s, *targ = NULL;
@@ -685,8 +678,6 @@ ACMD(do_cast)
 
  struct char_data *tch = NULL;
  struct obj_data *tobj = NULL;
- struct char_data *vict = NULL;
- struct obj_data *ovict = NULL;
  struct str_spells *spell = NULL;
  int i, delay, rts_code = TRUE;
  int effectiveness = 0;
@@ -730,7 +721,7 @@ ACMD(do_cast)
  // we return the control to it function.
  if (spell->function) {
    if (spell->type == SPELL) {
-//     call_ASPELL (spell->function, GET_LEVEL(ch), ch, vict, ovict);
+//     call_ASPELL (spell->function, GET_LEVEL(ch), ch, tch, tobj);
    }
    else {
      call_ACMD (spell->function, ch, argument, 0, 0);
@@ -742,7 +733,7 @@ ACMD(do_cast)
    send_to_char (ch, "%s", HUH);
    return;
  }
- level = get_spell_level_by_vnum(spell->vnum, GET_CLASS(ch));
+ level = get_spell_level(spell->vnum, GET_CLASS(ch));
  if (GET_LEVEL(ch) < level) {
    send_to_char(ch, "You do not know that %s!\r\n", (spell->type == SPELL) ? "spell" : "skill");
    return;
@@ -831,7 +822,7 @@ ACMD(do_cast)
     send_to_char(ch, "Cannot find the target of your spell!\r\n");
     return;
   }
-  mana = mag_manacost(ch, spell->vnum);
+  mana = mag_manacost(ch, tch, spell->vnum);
   if ((mana > 0) && (GET_MANA(ch) < mana) && (GET_LEVEL(ch) < LVL_IMMORT)) {
     send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
     return;
@@ -839,10 +830,12 @@ ACMD(do_cast)
 
  if (spell->effectiveness)
    effectiveness = GET_SKILL(ch, spell->vnum) * 
-                   formula_interpreter (ch, vict, spell->vnum, TRUE, spell->effectiveness, &rts_code) / 100;
+                   formula_interpreter (ch, tch, spell->vnum, TRUE, spell->effectiveness, &rts_code) / 100;
 
  if (rand_number (0, 101) > effectiveness) {
-   send_to_char (ch, "You lost your concentration!\r\n");
+   WAIT_STATE(ch, PULSE_VIOLENCE);
+   if (!tch || !skill_message(0, ch, tch, spell->vnum))
+     send_to_char (ch, "You lost your concentration!\r\n");
    if (mana > 0)
      GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - (mana / 2)));
 
@@ -863,7 +856,7 @@ ACMD(do_cast)
  if ((spell->type == SPELL) && (GET_LEVEL(ch) < LVL_IMMORT)) {
    assign = find_spell_assign (ch, spell); 
 
-   mana = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->assign[assign].num_mana, &rts_code);
+   mana = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->assign[assign].num_mana, &rts_code);
      
    if ((mana > 0) && (GET_MANA(ch) < mana)) {
      send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
@@ -872,9 +865,9 @@ ACMD(do_cast)
  }
 
  if (spell->delay) {
-   delay = formula_interpreter (ch, vict, spell->vnum, TRUE, spell->delay, 
+   delay = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, 
                                 &rts_code);
-   WAIT_STATE (ch, (delay > MAX_SPELL_DELAY) ? MAX_SPELL_DELAY : delay);
+   WAIT_STATE (ch, MIN(delay, MAX_SPELL_DELAY));
  }
 
  if (cast_spell(ch, tch, tobj, spell->vnum)) {
@@ -884,7 +877,7 @@ ACMD(do_cast)
  }
 
  if (spell->script)
-   if (!perform_script (spell->script, ch, vict, ovict, spell->vnum, 0) && !rts_code)
+   if (!perform_script (spell->script, ch, tch, tobj, spell->vnum, 0) && !rts_code)
      send_to_char (ch, "%s", NOEFFECT);   
 }
 

@@ -26,10 +26,7 @@
 #include "modify.h"
 #include "quest.h"
 #include "ibt.h"
-
-extern char *get_spell_name(int vnum);
-extern int get_spell_level_by_vnum(int vnum, int class);
-extern char *UNDEF_SPELL;
+#include "spedit.h"
 
 /* local (file scope) function prototpyes  */
 static char *next_page(char *str, struct char_data *ch);
@@ -392,7 +389,7 @@ ACMD(do_skillset)
     return;
   } 
 
-  int minlevel = get_spell_level_by_vnum(skill, pc); 
+  int minlevel = get_spell_level(skill, pc); 
   if ((minlevel >= LVL_IMMORT) && (pl < LVL_IMMORT)) {
     send_to_char(ch, "%s cannot be learned by mortals.\r\n", sname);
     return;

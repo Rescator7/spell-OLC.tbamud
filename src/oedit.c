@@ -978,7 +978,7 @@ void oedit_parse(struct descriptor_data *d, char *arg)
     switch (GET_OBJ_TYPE(OLC_OBJ(d))) {
     case ITEM_SCROLL:
     case ITEM_POTION:
-      if (number == 0 || number == -1 || !find_spell_by_vnum(number))
+      if (number == 0 || number == -1 || !get_spell_by_vnum(number))
 	GET_OBJ_VAL(OLC_OBJ(d), 1) = -1;
       else 
         GET_OBJ_VAL(OLC_OBJ(d), 1) = number;
@@ -1012,7 +1012,7 @@ void oedit_parse(struct descriptor_data *d, char *arg)
     switch (GET_OBJ_TYPE(OLC_OBJ(d))) {
     case ITEM_SCROLL:
     case ITEM_POTION:
-      if (number == 0 || number == -1 || !find_spell_by_vnum(number)) 
+      if (number == 0 || number == -1 || !get_spell_by_vnum(number)) 
 	GET_OBJ_VAL(OLC_OBJ(d), 2) = -1;
       else
         GET_OBJ_VAL(OLC_OBJ(d), 2) = number;
@@ -1051,7 +1051,7 @@ void oedit_parse(struct descriptor_data *d, char *arg)
     case ITEM_STAFF:
     case ITEM_SCROLL:
     case ITEM_POTION:
-      if (number == 0 || number == -1 || !find_spell_by_vnum(number)) 
+      if (number == 0 || number == -1 || !get_spell_by_vnum(number)) 
 	GET_OBJ_VAL(OLC_OBJ(d), 3) = -1;
       else
 	GET_OBJ_VAL(OLC_OBJ(d), 3) = number;

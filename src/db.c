@@ -719,10 +719,6 @@ void boot_db(void)
   if (file_to_string_alloc(GREETINGS_FILE, &GREETINGS) == 0)
     prune_crlf(GREETINGS);
 
-// old system
-//  log("Loading spell definitions.");
-//  mag_assign_spells();
-
   boot_world();
 
   log("Loading help entries.");

@@ -12,9 +12,9 @@
 #ifndef _SPELLS_H_
 #define _SPELLS_H_
 
-#define SPELL_NOEFFECT  (1 << 0)
-#define SPELL_FAILED    (1 << 1)
-#define SPELL_SUCCESS   (1 << 2)
+#define MAGIC_NOEFFECT  (1 << 0)
+#define MAGIC_FAILED    (1 << 1)
+#define MAGIC_SUCCESS   (1 << 2)
 
 #define DEFAULT_STAFF_LVL	12
 #define DEFAULT_WAND_LVL	12
@@ -202,24 +202,6 @@
 #define IS_SPELL_ACCDUR(spell)       ((spell)->mag_flags & MAG_ACCDUR)
 #define IS_SPELL_ACCMOD(spell)       ((spell)->mag_flags & MAG_ACCMOD)
 
-/*
-#define IS_SPELL_OBJ(spell)          ((spell)->targ_flags & 1)
-*/
-
-struct spell_info_type {
-   byte min_position;	/* Position for caster	 */
-   int mana_min;	/* Min amount of mana used by a spell (highest lev) */
-   int mana_max;	/* Max amount of mana used by a spell (lowest lev) */
-   int mana_change;	/* Change in mana used by spell from lev to lev */
-
-   int min_level[NUM_CLASSES];
-   int routines;
-   byte violent;
-   int targets;         /* See below for use with TAR_XXX  */
-   const char *name;	/* Input size not limited. Originates from string constants. */
-   const char *wear_off_msg;	/* Input size not limited. Originates from string constants. */
-};
-
 /* Possible Targets:
    bit 0 : IGNORE TARGET
    bit 1 : PC/NPC in room
@@ -258,8 +240,8 @@ ASPELL(spell_detect_poison);
 
 int find_skill_num(char *name);
 
-void mag_protections(int level, struct char_data *ch, struct char_data *tch,
-  int spellnum, int spellprot, int dur, int res);
+int mag_protections(int level, struct char_data *ch, struct char_data *tch,
+                    int spellnum, int spellprot, int dur, int res);
 
 int mag_damage(int level, struct char_data *ch, struct char_data *victim,
   int spellnum, int savetype);
@@ -267,27 +249,27 @@ int mag_damage(int level, struct char_data *ch, struct char_data *victim,
 int mag_affects(int level, struct char_data *ch, struct char_data *victim,
                 int spellnum, int savetype);
 
-void mag_groups(int level, struct char_data *ch, int spellnum, int savetype);
+int mag_groups(int level, struct char_data *ch, int spellnum, int savetype);
 
-void mag_masses(int level, struct char_data *ch, int spellnum, int savetype);
+int mag_masses(int level, struct char_data *ch, int spellnum, int savetype);
 
-void mag_areas(int level, struct char_data *ch, int spellnum, int savetype);
+int mag_areas(int level, struct char_data *ch, int spellnum, int savetype);
 
-void mag_rooms(int level, struct char_data *ch, int spellnum);
+int mag_rooms(int level, struct char_data *ch, int spellnum);
 
-void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
- int spellnum, int savetype);
+int mag_summons(int level, struct char_data *ch, struct obj_data *obj,
+                int spellnum, int savetype);
 
-void mag_points(int level, struct char_data *ch, struct char_data *victim,
- int spellnum, int savetype);
+int mag_points(int level, struct char_data *ch, struct char_data *victim,
+               int spellnum, int savetype);
 
 int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
                   int spellnum, int type);
 
-void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
-  int spellnum, int type);
+int mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
+                   int spellnum, int type);
 
-void mag_creations(int level, struct char_data *ch, int spellnum);
+int mag_creations(int level, struct char_data *ch, int spellnum);
 
 int	call_magic(struct char_data *caster, struct char_data *cvict,
   struct obj_data *ovict, int spellnum, int level, int casttype);
@@ -308,12 +290,8 @@ void affect_update(void);
 
 /* from spell_parser.c */
 ACMD(do_cast);
-void unused_spell(int spl);
-void mag_assign_spells(void);
 
 /* Global variables */
-extern struct spell_info_type spell_info[];
 extern char cast_arg2[];
-extern const char *unused_spellname;
 
 #endif /* _SPELLS_H_ */
