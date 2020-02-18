@@ -11,9 +11,20 @@
   - Min position: Minimum position to cast a spell, or call a skill.
   - Target flags: (see below)
   - Magic FLAGS: (see below)
-  - Pulse delay: Make a delay after a spell/skill is called.
   
-  - Effectiveness: How effective, or dificult to call this spell/skill. 100% effectiveness doesn't
+  - Damages: (Does damage up to max damage to the victim)
+    - Damage (string formula)
+    
+    - Max damage (integer)
+    
+    Require Magic FLAGS: DAMAGE VIOLENT
+      
+    Learn more about string formula: 
+    https://github.com/Rescator7/spell-OLC.tbamud/blob/master/src/formula.README
+    
+  - Pulse delay (string formula): Make a delay after a spell/skill is called.
+  
+  - Effectiveness (string formula): How effective, or dificult to call this spell/skill. 100% effectiveness doesn't
   imply 100% success rate. It's a mix of your spell/skill learned % * effectiveness / 100.
   for e.g: If you are learned at 66% in poison, and the effectiveness is 83%. The true effectiveness of
   that spell would be 66 * 83 / 100 = 54%. So, nearly 1 time out of 2 you'll receive the message: "You lost your concentration".
