@@ -67,8 +67,8 @@
 - MANUAL: This flag is used by special spells/skills with function. 
 - ROOMS: Differ from AREAS as it is used to modify a room. ONLY used by the original SPELL_DARKNESS.
  
- This version of spell OLC doesn't support ROOMS except the origianl SPELL, but it's possible to manually add support in magic.c (mag_rooms)
-- VIOLENT: This flag is required by spells/skills with violent actions. It will stop your action in peaceful rooms, and it will start a fight even if your spell/skill failed.
+ This version of spell OLC doesn't support ROOMS except the original SPELL, but it's possible to manually add support in magic.c (mag_rooms)
+- VIOLENT: This flag is required by spells/skills with violent actions. It will stop your action in peaceful rooms, and it will start a fight even if your spell/skill failed. This flags is also required if DAMAGES or AREAS flags are set.
 - ACCDUR: Used in conjonction with AFFECTS or PROTECTIONS, it accumulate the duration.
 - ACCMOD: Used in conjonction with AFFECTS with APPLIES only, it accumulate modifier.
 - PROTECTION: This flag is activate "P) Menu -> Protection from" effects.
