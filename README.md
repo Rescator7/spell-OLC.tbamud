@@ -8,10 +8,10 @@
 
 <p> You can modify the player's points:</p>
   
-  - Hit p. <value>
-  - Mana <value>
-  - Move <value>
-  - Gold <value>
+  - Hit p. \<value>
+  - Mana \<value>
+  - Move \<value>
+  - Gold \<value>
   
 <p>Value is a string formula. The result of the formula will be <b>added</b> to the player's point.</p>
 
