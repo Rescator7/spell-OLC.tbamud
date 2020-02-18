@@ -106,7 +106,7 @@ LOAD_MOBILE {"mob, where"};</pre>
 
 <p>Print a list of warnings about spell or skill bad setup.
   
-  for e.g: If you create an apply or affects. Menu A, but you don't set Magic Flags: <b>POINTS</b>
+  for e.g: If you create an apply or affects. Menu A, but you don't set Magic Flags: <b>AFFECTS</b>
   
   you'll receive that warning: 
   
