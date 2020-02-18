@@ -38,13 +38,11 @@ Depend on MAG_FLAGS: SELF_ONLY, CHAR_ROOM.</p>
 <pre>
 LOAD_MOBILE {"mob, where"};</pre>
 
-<p>mob = mobile vnum.</p>
-<p>where = room vnum or a second mobile name.</p>
+- mob = mobile vnum.
+- where = room vnum or a second mobile name.
 
 <p>Will load mobile <mob> to <where>. The mobile will NOT be affected by AFF_CHARM.</p>
-
-<p>That's it for now.</p>
-<p>More script commands could easily be added in spells_script.c</p>
+<p>That's it for now. More script commands could easily be added in spells_script.c</p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr13.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr14.jpg)
