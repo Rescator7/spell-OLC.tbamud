@@ -38,6 +38,41 @@
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr1.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr2.jpg)
+
+# Magic flags
+
+- DAMAGE: This flag activate "6) Damages" effect.
+- AFFECTS: This flag activate "A) Menu -> Applies & Affects" effects.
+- UNAFFECTS: This flag activate "D) Menu -> Dispells" effects.
+- POINTS: This flag activate "9) Menu -> Points" effects.
+- ALTER OBJS: To modify objects. Only used by those original spells:
+
+              - SPELL_BLESS
+              - SPELL_CURSE
+              - SPELL_INVISIBLE
+              - SPELL_POISON
+              - SPELL_REMOVE_CURSE
+              - SPELL_REMOVE_POISON
+  This version of spell OLC doesn't support ALTER OBJS execpt original spells, but it's possible to manually add support in magic.c (mag_alter_objs)
+- GROUPS: Spells groups. Only used by those original spells:
+
+              - SPELL_GROUP_HEAL
+              - SPELL_GOUP_ARMOR
+              - SPELL_GOUP_RECALL
+  This version of spell OLC doesn't support GROUPS except original spells, but it's possible to manually add support in magic.c (perform_mag_groups)
+- MASSES: This is unused in TBA MUD 2020 yet.
+- AREAS: Activate damages to be done in the room. Original SPELL_EARTHQUAKE require it.
+- SUMMONS: This flag activate "X) Menu -> Summon mobile" effects.
+- CREATIONS: This flag activate "O) Menu -> Create objects" effects.
+- MANUAL: This flag is used by special spells/skills with function. 
+- ROOMS: Differ from AREAS as it is used to modify a room. ONLY used by the original SPELL_DARKNESS.
+ 
+ This version of spell OLC doesn't support ROOMS except the origianl SPELL, but it's possible to manually add support in magic.c (mag_rooms)
+- VIOLENT: This flag is required by spells/skills with violent actions. It will stop your action in peaceful rooms, and it will start a fight even if your spell/skill failed.
+- ACCDUR: Used in conjonction with AFFECTS or PROTECTIONS, it accumulate the duration.
+- ACCMOD: Used in conjonction with AFFECTS with APPLIES only, it accumulate modifier.
+- PROTECTION: This flag is activate "P) Menu -> Protection from" effects.
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr3.jpg)
 
 # Menu Points
