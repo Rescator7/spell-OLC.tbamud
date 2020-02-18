@@ -3,6 +3,23 @@
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr1.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr2.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr3.jpg)
+
+# Menu Points
+
+<p> You can modify the player's points:</p>
+  
+  - Hit p. <value>
+  - Mana <value>
+  - Move <value>
+  - Gold <value>
+  
+<p>Value is a string formula. The result of the formula will be <b>added</b> to the player's point.</p>
+
+  - Hit p. can't go below 1, and not above MAX_HIT
+  - Mana can't go below 0, and not above MAX_MANA
+  - Move can't go below 0, and above MAX_MOVE
+  - Gold can't go below 0, no upper limits!
+  
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr4.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr5.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr6.jpg)
