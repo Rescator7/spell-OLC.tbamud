@@ -7,7 +7,7 @@
 # Menu Points
 
 <p> You can modify the player's points:</p>
-  
+
   - Hit p. \<value>
   - Mana \<value>
   - Move \<value>
@@ -19,7 +19,10 @@
   - Mana can't go below 0, and not above MAX_MANA
   - Move can't go below 0, and above MAX_MOVE
   - Gold can't go below 0, no upper limits!
-  
+
+<p>Affected by: <b>Target FLAGS</b></p>
+<p>Require Magic Flags : <b>POINTS</b></p>
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr4.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr5.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr6.jpg)
