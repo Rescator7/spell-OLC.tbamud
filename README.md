@@ -59,7 +59,8 @@ LOAD_MOBILE {"mob, where"};</pre>
 - mob = mobile vnum.
 - where = room vnum or a second mobile name.
 
-<p>Will load mobile <mob> to <where>. The mobile will NOT be affected by AFF_CHARM.</p>
+<p>Will load mobile "mob" to "where". The mobile will NOT be affected by AFF_CHARM.</p>
+<p>For a charmed mobile use "X) Menu -> Summon mobile".</p>
 <p>That's it for now. More script commands could easily be added in spells_script.c</p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr13.jpg)
