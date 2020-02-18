@@ -1,5 +1,30 @@
 # spell-OLC.tbamud
 
+# Main menu
+
+<p> This is an example from the spell poison vnum 33. 
+  
+  - Type: SPELL or SKILL. mostly, spell needs to be called by cast 'spell name', while
+  SKILL act more like a command: bash someone.
+  - Status: Available / Unvailable. Turn on/off spells/skills on the fly.
+  - Name: Name of the spell/skill could be changed at will.
+  - Min position: Minimum position to cast a spell, or call a skill.
+  - Target flags: (see below)
+  - Magic FLAGS: (see below)
+  - Pulse delay: Make a delay after a spell/skill is called.
+  
+  - Effectiveness: How effective, or dificult to call this spell/skill. 100% effectiveness doesn't
+  imply 100% success rate. It's a mix of your spell/skill learned % * effectiveness / 100.
+  for e.g: If you are learned at 66% in poison, and the effectiveness is 83%. The true effectiveness of
+  that spell would be 66 * 83 / 100 = 54%. So, nearly 1 time out of 2 you'll receive the message: "You lost your concentration".
+  
+  #### Menu colors
+  
+  - Menu in white: Option not set.
+  - Menu in blue: Option is set.
+  - Menu in Yellow: Option should be set.
+  - Menu in Red: Option is disabled. This spell or skill use special build-in code.
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr1.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr2.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr3.jpg)
