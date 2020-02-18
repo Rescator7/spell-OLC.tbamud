@@ -194,14 +194,6 @@
 #define TAR_GROUP       (1 << 11)
 #define TAR_GROUP_VICT  (1 << 12)
 
-#define IS_SPELL_SELF(spell)         ((spell)->targ_flags & TAR_SELF_ONLY)
-#define IS_SPELL_GROUP(spell)        ((spell)->targ_flags & TAR_GROUP)
-#define IS_SPELL_GRPVICT(spell)      ((spell)->targ_flags & TAR_GROUP_VICT)
-#define IS_SPELL_VICT(spell)         ((spell)->targ_flags & TAR_NOT_SELF)
-#define IS_SPELL_ROOM(spell)         ((spell)->targ_flags & TAR_CHAR_ROOM)
-#define IS_SPELL_ACCDUR(spell)       ((spell)->mag_flags & MAG_ACCDUR)
-#define IS_SPELL_ACCMOD(spell)       ((spell)->mag_flags & MAG_ACCMOD)
-
 /* Possible Targets:
    bit 0 : IGNORE TARGET
    bit 1 : PC/NPC in room

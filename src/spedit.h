@@ -1,3 +1,13 @@
+/* Copyright (c) 2018 castillo7@hotmail.com
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. */
+
 #ifndef SPEDIT
 #define SPEDIT
 
@@ -9,6 +19,7 @@
 #define MAX_SPELL_DELAY         50   /* this equal to 5 sec */
 #define SPELL                   'P'
 #define SKILL                   'K'
+#define SPSK                    'Z'
 #define MAX_SPELL_AFFECTS       6    /* modifying thos MAX_SPELL would require a FULL spells database upgrade. */
 #define MAX_SPELL_PROTECTIONS   6    /* for e.g: spedit_save_to_disk */
 #define MAX_SPELL_OBJECTS       3
@@ -59,9 +70,6 @@ extern char *UNDEF_SPELL;
 
 struct str_spells *get_spell_by_vnum(int vnum);
 struct str_spells *get_spell_by_name (char *name, char type);
-
-int formula_interpreter (struct char_data *self, struct char_data *vict,
-                         int spell_vnum, int syserr, char *cmd, int *rts_code);
 int get_spell_level(int vnum, int class);
 int get_spell_apply(struct str_spells *spell, int pos);
 int find_spell_assign (struct char_data *ch, struct str_spells *ptr);
@@ -70,6 +78,7 @@ int get_spell_mag_flags(int vnum);
 
 void spedit_init_new_spell (struct str_spells *spell);
 void spedit_save_internally (struct str_spells *spell);
+void spedit_save_to_disk(void);
 
 char *get_spell_name(int vnum);
 
@@ -88,7 +97,7 @@ struct str_appl {
 struct str_assign {
    int  class_num;
    int  level;
-   char *num_prac;
+   char *prac_gain;
    char *num_mana;
 };
 

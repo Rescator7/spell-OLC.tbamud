@@ -70,6 +70,7 @@ void new_affect(struct affected_type *af);
 int get_class_by_name(char *classname);
 char * convert_from_tabs(char * string);
 int count_non_protocol_chars(char * str);
+char *stristr3(const char* haystack, const char* needle);
 
 /* Public functions made available form weather.c */
 void weather_and_time(int mode);

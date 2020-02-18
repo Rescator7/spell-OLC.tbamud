@@ -21,7 +21,8 @@
 #include "dg_scripts.h"
 #include "fight.h"  /* for hit() */
 #include "spedit.h"
-#include "code.h"
+#include "spells_script.h"
+#include "formula.h"
 
 /* Global Variables definitions, used elsewhere */
 char cast_arg2[MAX_INPUT_LENGTH];
@@ -96,12 +97,16 @@ int mag_manacost(struct char_data *ch, struct char_data *tch, int spellnum)
 
   num = get_spell_class(spell, GET_CLASS(ch));
   if (num == -1) {
-    log("SYSERR: spell vnum %d not assigned to class: %d"
-        ", passed to mag_manacost.", spellnum, GET_CLASS(ch));
-    return 100; 
+    if (GET_LEVEL(ch) < LVL_IMMORT) {
+      log("SYSERR: spell vnum %d not assigned to class: %d"
+           ", passed to mag_manacost.", spellnum, GET_CLASS(ch));
+      return 100; 
+    } 
+    else
+      return 0;
   }
   
-  return formula_interpreter (ch, tch, spellnum, TRUE, spell->assign[num].num_mana, &rts_code);
+  return formula_interpreter (ch, tch, spellnum, TRUE, spell->assign[num].num_mana, GET_LEVEL(ch), &rts_code);
 }
 
 static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
@@ -255,8 +260,8 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 
   if (spell->mag_flags & MAG_PROTECTION) {
     for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
-      dur = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].duration, &rts_code);
-      res = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].resist, &rts_code);
+      dur = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].duration, level, &rts_code);
+      res = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].resist, level, &rts_code);
       flags |= mag_protections(level, caster, cvict, spell->vnum, spell->protfrom[i].prot_num, dur, res);
     }
   }
@@ -306,6 +311,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
   if (flags & MAGIC_NOEFFECT)
     send_to_char (caster, "%s", CONFIG_NOEFFECT);
   else
+  if (flags & MAGIC_FAILED)
     send_to_char (caster, "You failed!\r\n");
 
   return (1);
@@ -830,7 +836,7 @@ ACMD(do_cast)
 
  if (spell->effectiveness)
    effectiveness = GET_SKILL(ch, spell->vnum) * 
-                   formula_interpreter (ch, tch, spell->vnum, TRUE, spell->effectiveness, &rts_code) / 100;
+                   formula_interpreter (ch, tch, spell->vnum, TRUE, spell->effectiveness, GET_LEVEL(ch), &rts_code) / 100;
 
  if (rand_number (0, 101) > effectiveness) {
    WAIT_STATE(ch, PULSE_VIOLENCE);
@@ -856,7 +862,7 @@ ACMD(do_cast)
  if ((spell->type == SPELL) && (GET_LEVEL(ch) < LVL_IMMORT)) {
    assign = find_spell_assign (ch, spell); 
 
-   mana = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->assign[assign].num_mana, &rts_code);
+   mana = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->assign[assign].num_mana, GET_LEVEL(ch), &rts_code);
      
    if ((mana > 0) && (GET_MANA(ch) < mana)) {
      send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
@@ -865,8 +871,7 @@ ACMD(do_cast)
  }
 
  if (spell->delay) {
-   delay = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, 
-                                &rts_code);
+   delay = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, GET_LEVEL(ch), &rts_code);
    WAIT_STATE (ch, MIN(delay, MAX_SPELL_DELAY));
  }
 

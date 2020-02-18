@@ -154,7 +154,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "file"     , "file"    , POS_SLEEPING, do_file     , LVL_GOD, 0 },
   { "flee"     , "fl"      , POS_FIGHTING, do_flee     , 1, 0 },
   { "follow"   , "fol"     , POS_RESTING , do_follow   , 0, 0 },
-  { "formula"  , "form"    , POS_DEAD    , do_formula  , LVL_IMMORT, 0 },
+  { "formula"  , "form"    , POS_DEAD    , do_formula  , LVL_GOD, 0 },
   { "freeze"   , "freeze"  , POS_DEAD    , do_wizutil  , LVL_GRGOD, SCMD_FREEZE },
 
   { "get"      , "g"       , POS_RESTING , do_get      , 0, 0 },
@@ -301,7 +301,7 @@ cpp_extern const struct command_info cmd_info[] = {
   { "slist"    , "slist"   , POS_SLEEPING, do_oasis_list, LVL_BUILDER, SCMD_OASIS_SLIST },
   { "sneak"    , "sneak"   , POS_STANDING, do_cast    , 1, SKILL_SNEAK },
   { "snoop"    , "snoop"   , POS_DEAD    , do_snoop    , LVL_GOD, 0 },
-  { "spedit"   , "spe"     , POS_DEAD    , do_spedit   , LVL_BUILDER, 0 },
+  { "spedit"   , "spe"     , POS_DEAD    , do_spedit   , LVL_GRGOD, 0 },
   { "splist"   , "splist"  , POS_DEAD    , do_splist   , LVL_BUILDER, 0 },
   { "socials"  , "socials" , POS_DEAD    , do_commands , 0, SCMD_SOCIALS },
   { "split"    , "split"   , POS_SITTING , do_split    , 1, 0 },

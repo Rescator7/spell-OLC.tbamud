@@ -41,7 +41,9 @@
 #include <sys/stat.h>
 
 extern void spedit_free_memory();
-extern void create_build_in_spells();
+extern void create_spells_db();
+extern void set_spells_function();
+extern int boot_spells();
 
 /*  declarations of most of the 'global' variables */
 struct config_data config_info; /* Game configuration list.	 */
@@ -457,12 +459,11 @@ void boot_world(void)
   log("Loading rooms.");
   index_boot(DB_BOOT_WLD);
 
-  log("Assigning old spells.");
-  create_build_in_spells();
-  //assign_spells();
-
   log("Loading spells.");
-  boot_spells();
+  if (boot_spells())
+    set_spells_function();
+  else
+    create_spells_db();
 
   log("Renumbering rooms.");
   renum_world();
@@ -756,9 +757,8 @@ void boot_db(void)
     assign_the_quests();
   }
 
-  log("Sorting command list and spells.");
+  log("Sorting command list.");
   sort_commands();
-//  sort_spells();
 
   log("Booting mail system.");
   if (!scan_file()) {
@@ -1245,6 +1245,24 @@ static bitvector_t asciiflag_conv_aff(char *flag)
   return (flags);
 }
 
+/* Fix for crashes in the editor when formatting. E-descs are assumed to
+  * end with a \r\n. -Welcor */
+void ensure_newline_terminated(struct extra_descr_data* new_descr) {
+  char *with_term, *end;
+
+  if (new_descr->description == NULL) {
+    return;
+  }
+
+  end = strchr(new_descr->description, '\0');
+  if (end > new_descr->description && *(end - 1) != '\n') {
+    CREATE(with_term, char, strlen(new_descr->description) + 3);
+    sprintf(with_term, "%s\r\n", new_descr->description); /* snprintf ok : size checked above*/
+    free(new_descr->description);
+    new_descr->description = with_term;
+  }
+}
+
 /* load the rooms */
 void parse_room(FILE *fl, int virtual_nr)
 {
@@ -1352,17 +1370,8 @@ void parse_room(FILE *fl, int virtual_nr)
       CREATE(new_descr, struct extra_descr_data, 1);
       new_descr->keyword = fread_string(fl, buf2);
       new_descr->description = fread_string(fl, buf2);
-      /* Fix for crashes in the editor when formatting. E-descs are assumed to
-       * end with a \r\n. -Welcor */
-      {
-      	char *end = strchr(new_descr->description, '\0');
-      	if (end > new_descr->description && *(end-1) != '\n') {
-      	  CREATE(end, char, strlen(new_descr->description)+3);
-      	  sprintf(end, "%s\r\n", new_descr->description); /* snprintf ok : size checked above*/
-      	  free(new_descr->description);
-      	  new_descr->description = end;
-      	}
-      }
+      ensure_newline_terminated(new_descr);
+
       new_descr->next = world[room_nr].ex_description;
       world[room_nr].ex_description = new_descr;
       break;
@@ -3766,7 +3775,7 @@ static int check_object(struct obj_data *obj)
 static int check_object_spell_number(struct obj_data *obj, int val)
 {
   int error = FALSE;
-//  const char *spellname;
+  const char *spellname;
 
   if (GET_OBJ_VAL(obj, val) == -1 || GET_OBJ_VAL(obj, val) == 0) /* no spell */
     return (error);
@@ -3787,14 +3796,12 @@ static int check_object_spell_number(struct obj_data *obj, int val)
     return (error);
 
   /* Now check for unnamed spells. */
-/*
   spellname = skill_name(GET_OBJ_VAL(obj, val));
 
-  if ((spellname == unused_spellname || !str_cmp("UNDEFINED", spellname)) && (error = TRUE))
+  if (!str_cmp("UNDEFINED", spellname) && (error = TRUE))
     log("SYSERR: Object #%d (%s) uses '%s' spell #%d.",
 		GET_OBJ_VNUM(obj), obj->short_description, spellname,
 		GET_OBJ_VAL(obj, val));
-*/
 
   return (error);
 }

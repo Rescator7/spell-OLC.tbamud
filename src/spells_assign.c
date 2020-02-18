@@ -1,3 +1,12 @@
+/* Copyright (c) 2018 castillo7@hotmail.com
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. */
 #include "conf.h"
 #include "sysdep.h"
 #include "structs.h"
@@ -17,14 +26,11 @@ ACMD(do_pick_lock);
 ACMD(do_whirlwind);
 ACMD(do_bandage);
 
-// for future use
-// --------------
-// This function should replace create_build_in_spells once 
-// lib/misc/spells is created. Or spells from patch is copied
-// at lib/misc/spells.
 void set_spells_function()
 {
  struct str_spells *spell;
+
+ log("Assigning spells's function.");
 
  if ((spell = get_spell_by_vnum(SPELL_TELEPORT)))
    spell->function = spell_teleport;
@@ -52,6 +58,9 @@ void set_spells_function()
 
  if ((spell = get_spell_by_vnum(SPELL_IDENTIFY)))
    spell->function = spell_identify;
+
+ if ((spell = get_spell_by_vnum(SKILL_BACKSTAB)))
+   spell->function = do_backstab;
 
  if ((spell = get_spell_by_vnum(SKILL_BASH)))
    spell->function = do_bash;
@@ -81,15 +90,19 @@ void set_spells_function()
    spell->function = do_bandage;
 }
 
-// This file, and 'create_build_in_spells' function is to create all the spell 
-// that exist in TBA MUD and respect all the spells and skills number. Same order.
-// for compatibility reson.
+// This function create the database of all the spells and skills,
+// that exist in TBA MUD and respect the original VNUMs.
+// for compatibility reasons.
 //
-// This function could be remove eventually.
-void create_build_in_spells() 
+// This function could be remove eventually. ?!
+// It's there to create the original spells/skills DB, or recreate it.
+// If a spells/skills DB exists, set_spells_function() will be called instead.
+void create_spells_db() 
 {
  struct str_spells *new_spell = NULL;
  char buf[MAX_STRING_LENGTH];
+
+ log("Creating spells Database.");
 
  // SPELL_ARMOR #1
  CREATE(new_spell, struct str_spells, 1);
@@ -427,7 +440,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 9;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("You feel a lot better!");
- new_spell->points.hp = strdup("dice(3, 8) + 3 + (self.level / 4)");
+ new_spell->points.hp = strdup("dice(3, 8) + 3 + (param / 4)");
  spedit_save_internally(new_spell);
  
  // SPELL_CURE_LIGHT # 16
@@ -447,7 +460,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 1;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->messages.to_vict = strdup("You feel better.");
- new_spell->points.hp = strdup("dice(1, 8) + 1 + (self.level / 4)");
+ new_spell->points.hp = strdup("dice(1, 8) + 1 + (param / 4)");
  spedit_save_internally(new_spell);
 
  // SPELL_CURSE # 17
@@ -498,7 +511,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 4;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->applies[0].appl_num = AFF_DETECT_ALIGN + NUM_APPLIES;
- new_spell->applies[0].duration = strdup("self.level + 12");
+ new_spell->applies[0].duration = strdup("12 + param");
  new_spell->messages.to_vict = strdup("Your eyes tingle.");
  new_spell->messages.wear_off = strdup("You feel less aware.");
 
@@ -524,7 +537,7 @@ void create_build_in_spells()
  new_spell->assign[1].level = 6;
  new_spell->assign[1].num_mana = strdup(buf);
  new_spell->applies[0].appl_num = AFF_DETECT_INVIS + NUM_APPLIES;
- new_spell->applies[0].duration = strdup("self.level + 12");
+ new_spell->applies[0].duration = strdup("12 + param");
  new_spell->messages.to_vict = strdup("Your eyes tingle.");
  new_spell->messages.wear_off = strdup("Your eyes stop tingling.");
 
@@ -547,7 +560,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 2;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->applies[0].appl_num = AFF_DETECT_MAGIC + NUM_APPLIES;
- new_spell->applies[0].duration = strdup("self.level + 12");
+ new_spell->applies[0].duration = strdup("12 + param");
  new_spell->messages.to_vict = strdup("Your eyes tingle.");
  new_spell->messages.wear_off = strdup("The detect magic wears off.");
 
@@ -614,7 +627,7 @@ void create_build_in_spells()
  new_spell->assign[0].class_num = CLASS_CLERIC;
  new_spell->assign[0].level = 12;
  new_spell->assign[0].num_mana = strdup(buf);
- new_spell->damages = strdup("dice(2, 8) + self.level");
+ new_spell->damages = strdup("dice(2, 8) + param");
  new_spell->max_dam = 100;
  new_spell->messages.to_self = strdup("You gesture and the earth begins to shake all around you!");
  new_spell->messages.to_room = strdup("$N gracefully gestures and the earth begins to shake violently!");
@@ -978,7 +991,7 @@ void create_build_in_spells()
  new_spell->assign[0].level = 6;
  new_spell->assign[0].num_mana = strdup(buf);
  new_spell->applies[0].appl_num = APPLY_STR;
- new_spell->applies[0].modifier = strdup("1 + (self.level > 18)");
+ new_spell->applies[0].modifier = strdup("1 + (param > 18)");
  new_spell->applies[0].duration = strdup("(self.level / 2) + 4");
  new_spell->messages.to_vict = strdup("You feel stronger!");
  new_spell->messages.wear_off = strdup("You feel weaker.");
@@ -1193,7 +1206,7 @@ void create_build_in_spells()
  new_spell->assign[1].level = 7;
  new_spell->assign[1].num_mana = strdup(buf);
  new_spell->applies[0].appl_num = AFF_INFRAVISION + NUM_APPLIES;
- new_spell->applies[0].duration = strdup("12 + self.level");
+ new_spell->applies[0].duration = strdup("12 + param");
  new_spell->messages.to_vict = strdup("Your eyes glow red.");
  new_spell->messages.to_room = strdup("$N's eyes glow red.");
  new_spell->messages.wear_off = strdup("Your night vision seems to fade.");
@@ -1469,4 +1482,6 @@ void create_build_in_spells()
  new_spell->effectiveness = strdup("100");
 
  spedit_save_internally(new_spell);
+
+ spedit_save_to_disk();
 }

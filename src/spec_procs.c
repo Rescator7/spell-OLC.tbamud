@@ -27,6 +27,7 @@
 #include "fight.h"
 #include "modify.h"
 #include "spedit.h"
+#include "formula.h"
 
 /* locally defined functions of local (file) scope */
 static const char *how_good(int percent);
@@ -114,7 +115,7 @@ SPECIAL(guild)
 {
   struct str_spells *spell = NULL;
 
-  int skill_num, percent, level;
+  int class, skill_num, percent, level, rts_code;
 
   if (IS_NPC(ch) || !CMD_IS("practice"))
     return (FALSE);
@@ -130,18 +131,17 @@ SPECIAL(guild)
     return (TRUE);
   }
 
-  skill_num = find_skill_num(argument);
-  if (skill_num != -1)
-    spell = get_spell_by_vnum(skill_num);
-
+  spell = get_spell_by_name(argument, SPSK);
   if (!spell) {
     log("SYSERR: spell not found '%s' at the guild.", argument);
     send_to_char(ch, "'%s' doesn't exists.\r\n", argument);
     return (TRUE);
   }
+  skill_num = spell->vnum;
+
   level = get_spell_level(skill_num, GET_CLASS(ch));
 
-  if ((skill_num < 1) || (level == -1) || (GET_LEVEL(ch) < level)) {
+  if ((level == -1) || (GET_LEVEL(ch) < level)) {
     send_to_char(ch, "You do not know of that %s.\r\n", spell->type == SPELL ? "spell" : "skill");
     return (TRUE);
   }
@@ -152,8 +152,13 @@ SPECIAL(guild)
   send_to_char(ch, "You practice for a while...\r\n");
   GET_PRACTICES(ch)--;
 
+  class = get_spell_class(spell, GET_CLASS(ch));
+
   percent = GET_SKILL(ch, skill_num);
-  percent += MIN(MAXGAIN(ch), MAX(MINGAIN(ch), int_app[GET_INT(ch)].learn));
+  if ((class == -1) || !spell->assign[class].prac_gain)
+    percent += MIN(MAXGAIN(ch), MAX(MINGAIN(ch), int_app[GET_INT(ch)].learn));
+  else
+    percent += formula_interpreter (ch, ch, skill_num, TRUE, spell->assign[class].prac_gain, GET_LEVEL(ch), &rts_code); 
 
   SET_SKILL(ch, skill_num, MIN(LEARNED(ch), percent));
 

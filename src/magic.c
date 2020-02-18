@@ -23,6 +23,7 @@
 #include "fight.h"
 #include "mud_event.h"
 #include "spedit.h"
+#include "formula.h"
 
 /* local file scope function prototypes */
 static int mag_materials(struct char_data *ch, IDXTYPE item0, IDXTYPE item1, IDXTYPE item2, int extract, int verbose);
@@ -215,7 +216,7 @@ int mag_damage(int level, struct char_data *ch, struct char_data *victim,
     return dam;
   }
 
-  dam = MIN(spell->max_dam, formula_interpreter (ch, victim, spellnum, TRUE, spell->damages, &rts_code));
+  dam = MIN(spell->max_dam, formula_interpreter (ch, victim, spellnum, TRUE, spell->damages, level, &rts_code));
 
   // special spells that formula interpreter can't deal with.
   switch (spellnum) {
@@ -279,7 +280,7 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
       af[i].modifier = 0;
     } else if (applnum < NUM_APPLIES) {
              af[i].location = spell->applies[i].appl_num;
-             af[i].modifier = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].modifier, &rts_code);
+             af[i].modifier = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].modifier, level, &rts_code);
            } else {
                af[i].location = spell->applies[i].appl_num; 
 
@@ -287,7 +288,7 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
                SET_BIT_AR(af[i].bitvector, affect - NUM_APPLIES);
            }
 
-    af[i].duration = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].duration, &rts_code);
+    af[i].duration = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].duration, level, &rts_code);
 
     if (spell->mag_flags & MAG_ACCDUR)
       accum_duration = TRUE;
@@ -566,7 +567,7 @@ int mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 
   fmsg = rand_number(2, 6);	/* Random fail message. */
   if (spell->summon_mob) 
-    mob_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_mob, &rts_code);
+    mob_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_mob, level, &rts_code);
   else {
     log("SYSERR: No mobile to summon at mag_summons.");
     return MAGIC_FAILED;
@@ -574,7 +575,7 @@ int mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 
   if (spell->summon_req) {
     pfail = 0;
-    obj_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_req, &rts_code);
+    obj_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_req, level, &rts_code);
     if (!mag_materials(ch, obj_num, NOTHING, NOTHING, TRUE, TRUE))
       pfail = 102;
   } else
@@ -645,25 +646,25 @@ int mag_points(int level, struct char_data *ch, struct char_data *victim,
   }
 
   if (spell->points.hp) {
-    hp = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.hp, &rts_code);
+    hp = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.hp, level, &rts_code);
     GET_HIT(victim) = MIN(GET_MAX_HIT(victim), MAX(0, GET_HIT(victim) + hp));
     effect++;
   }
 
   if (spell->points.mana) {
-    mana = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.mana, &rts_code);
+    mana = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.mana, level, &rts_code);
     GET_MANA(victim) = MIN(GET_MAX_MANA(victim), MAX(0, GET_MANA(victim) + mana));
     effect++;
   }
 
   if (spell->points.move) {
-    move = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.move, &rts_code);
+    move = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.move, level, &rts_code);
     GET_MOVE(victim) = MIN(GET_MAX_MOVE(victim), MAX(0, GET_MOVE(victim) + move));
     effect++;
   }
 
   if (spell->points.gold) {
-    gold = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.gold, &rts_code);
+    gold = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.gold, level, &rts_code);
     GET_GOLD(victim) = MAX(0, GET_GOLD(victim) + gold);
     effect++;
   }
@@ -698,7 +699,7 @@ int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
 
   for (i=0; i<MAX_SPELL_DISPEL; i++) {
     if (spell->dispel[i]) 
-      dispel = formula_interpreter (ch, victim, spellnum, TRUE, spell->dispel[i], &rts_code);
+      dispel = formula_interpreter (ch, victim, spellnum, TRUE, spell->dispel[i], level, &rts_code);
     else
       continue;
 
@@ -790,7 +791,7 @@ int mag_creations(int level, struct char_data *ch, int spellnum)
 
   for (i=0; i<MAX_SPELL_OBJECTS; i++) {
     if (spell->objects[i]) {
-      z = formula_interpreter (ch, ch, spellnum, TRUE, spell->objects[i], &rts_code);
+      z = formula_interpreter (ch, ch, spellnum, TRUE, spell->objects[i], level, &rts_code);
 
       if (!rts_code) {
         if (!(tobj = read_object(z, VIRTUAL))) {

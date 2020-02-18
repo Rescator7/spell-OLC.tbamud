@@ -1494,3 +1494,24 @@ char * convert_from_tabs(char * string)
   parse_tab(buf);
   return(buf);
 }
+
+// strcasestr is not standard C89/C99
+// https://stackoverflow.com/questions/27303062/strstr-function-like-that-ignores-upper-or-lower-case
+//
+// There is more efficient version at the link above. 
+// This version is the easiest to understand from the link.
+char *stristr3(const char* haystack, const char* needle) {
+  do {
+    const char* h = haystack;
+    const char* n = needle;
+    while (tolower((unsigned char) *h) == tolower((unsigned char ) *n) && *n) {
+      h++;
+      n++;
+    }
+    if (*n == 0) {
+      return (char *) haystack;
+    }
+  } while (*haystack++);
+  return 0;
+}
+

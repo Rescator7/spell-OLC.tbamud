@@ -7,6 +7,15 @@
 /* date:    25 dec 1999.                                                       */
 /*          2020: updated, bugs fix, etc. now for TBA MUD 2020.                */
 /* *************************************************************************** */
+/* Copyright (c) 2018 castillo7@hotmail.com
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. */
 #include "conf.h"
 #include "sysdep.h"
 #include "structs.h"
@@ -80,6 +89,7 @@ const char *list_codes[] = {
    "EVIL",          /* 54 (z) */
    "DICE(",         /* 55 (A) */
    ",",             /* 56 (B) */
+   "PARAM",         /* 57 (C) */
    "\n"
 };
 
@@ -524,7 +534,7 @@ int perform_formula (struct formula **head_formula, int spell_vnum,
 }
 
 int formula_interpreter (struct char_data *self, struct char_data *vict, 
-                         int spell_vnum, int syserr, char *cmd, int *rts_code)
+                         int spell_vnum, int syserr, char *cmd, int param, int *rts_code)
 {
  char buf[2048];
 
@@ -700,7 +710,8 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
          switch (type_act) {
             case CODE_IDE_SELF :
             case CODE_IDE_VICT : self_vict = type_act; break;
-            case CODE_DIGIT    : num = num * 10 + (buf[i] - '0');  
+            case CODE_DIGIT    : num = num * 10 + (buf[i] - '0'); break; 
+            case CODE_PARAM    : num = param; break;
          }
        }
   }
@@ -712,6 +723,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
  if (strchr(bad_end_code, CHAR_CODE(otype_act))) {
    *rts_code = ERROR_7000 + otype_act;
    send_formula_error (self, *rts_code, spell_vnum, syserr);
+   free_formula (&head_formula);
    return 0;
  }
 
@@ -721,5 +733,5 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 ACMD(do_formula) {
  int rts_code;
 
- send_to_char (ch, "value: %d\r\n", formula_interpreter (ch, 0, 0, FALSE, argument, &rts_code));
+ send_to_char (ch, "value: %d\r\n", formula_interpreter (ch, 0, 0, FALSE, argument, 0, &rts_code));
 }

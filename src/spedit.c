@@ -1,3 +1,13 @@
+/* Copyright (c) 2018 castillo7@hotmail.com
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. */
+
 #include "conf.h"
 #include "sysdep.h"
 #include "structs.h"
@@ -13,12 +23,22 @@
 #include "spedit.h"
 #include "constants.h"
 #include "class.h"
+#include "formula.h"
+
+#define BUFSIZE 2048
 
 #define EMPTY_STR(str) ((str) ? (str) : "<empty>")
 #define NULL_STR(str) ((str) ? (str) : "")
-#define STRDUP(str)  ((str) ? (strdup(str)) : NULL)
-#define SAFE_FREE(str) if(str) free(str)
-#define BUFSIZE 2048
+#define STRDUP(str)  ((str && *str) ? (strdup(str)) : NULL)
+
+// SAFE_FREE is similar to DISPOSE from utils.h, but 
+// without log("SYSERR") if (str) is NULL. It's not an error here.
+#define SAFE_FREE(str) do		\
+			{		\
+			if (str)	\
+			free(str);	\
+			str = NULL;	\
+			} while(0)
 
 // global variable
 struct str_spells *list_spells = NULL;
@@ -166,29 +186,6 @@ char *get_spell_name(int vnum)
  return UNDEF_SPELL;
 }
 
-int find_skill_num (char *name) {
-  struct str_spells *ptr;
-  int first = -1; 
-  int cpt = 0;
-
-  for (ptr = list_spells; ptr; ptr = ptr->next) {
-    // exact match
-    if (!str_cmp(name, ptr->name))
-      return ptr->vnum;
-
-    // we found a partial match
-    if (is_abbrev(name, ptr->name)) {
-       // count how many of them
-       cpt++;
-       if (first == -1) 
-         // memorise the first match
-         first = ptr->vnum;
-    }
-  }
-  // only 1 match return it, otherwise -1
-  return (cpt == 1) ? first : -1;
-}
-
 struct str_spells *get_spell_by_vnum(int vnum)
 {
   struct str_spells *ptr;
@@ -213,14 +210,33 @@ int get_spell_level(int vnum, int class)
  return -1;
 }
 
+int find_skill_num (char *name) {
+  struct str_spells *ptr;
+  int first = -1; 
+  int cpt = 0;
+
+  for (ptr = list_spells; ptr; ptr = ptr->next) {
+    if (is_abbrev(name, ptr->name)) {
+       if (++cpt > 1)
+         return -1;
+       first = ptr->vnum;
+    }
+  }
+  return first;
+}
+
 struct str_spells *get_spell_by_name(char *name, char type)
 {
-  struct str_spells *ptr;
+  struct str_spells *ptr, *first = NULL;
+  int cpt = 0; 
 
   for (ptr = list_spells; ptr; ptr = ptr->next)
-    if (is_abbrev(name, ptr->name) && (ptr->type == type)) 
-      return ptr;
-  return NULL;
+    if (is_abbrev(name, ptr->name) && ((ptr->type == SPSK) || (ptr->type == type))) {
+      if (++cpt > 1)
+        return NULL;
+      first = ptr;
+    }
+  return first;
 }
 
 int olc_spell_by_name (struct descriptor_data *d, char *name) 
@@ -235,7 +251,7 @@ int olc_spell_by_name (struct descriptor_data *d, char *name)
     ptr = list_spells;
 
   while (ptr) {
-    if (strstr(ptr->name, name)) {
+    if (stristr3(ptr->name, name)) {
       if (vnum == 0)
         vnum = ptr->vnum;
       else {
@@ -289,13 +305,13 @@ void spedit_assign_menu (struct descriptor_data *d) {
 
   Q = OLC_SPELL(d);
   for (i=0; i<NUM_CLASSES; i++)
-    sprintf (buf, "%s%s%d%s) Name    : %s%s %s(%s%3d%s) \r\n   %sPrac    : %s%s\r\n   "
-                  "%sMana    : %s%s\r\n",
+    sprintf (buf, "%s%s%d%s) Name        : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n   "
+                  "%sMana        : %s%s\r\n",
                   buf, 
                   grn, i + 1, nrm, yel, 
                   Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
                   nrm, cyn, Q->assign[i].level, nrm,
-                  nrm, cyn, EMPTY_STR(Q->assign[i].num_prac),
+                  nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain),
                   nrm, cyn, EMPTY_STR(Q->assign[i].num_mana));
   sprintf (buf, "%s\r\n%sEnter choice (0 to quit) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
@@ -430,61 +446,60 @@ void spedit_assignement_menu (struct descriptor_data *d) {
 }
 
 void spedit_show_warnings (struct descriptor_data *d) {
-  const int bSIZE = 2048;
-  char buf[bSIZE];
+  char buf[BUFSIZE];
   int len = 0;
 
   buf[0] = '\0';
   if (OLC_SPELL(d)->status != available)
-    len += snprintf(buf, bSIZE, "Spell status is unavailable.\r\n");
+    len += snprintf(buf, BUFSIZE, "Spell status is unavailable.\r\n");
 
-  if ((len < bSIZE) && !is_assign_set(OLC_SPELL(d)))
-    len += snprintf(buf + len, bSIZE - len, "Spell is not assigned to any classes.\r\n");
+  if ((len < BUFSIZE) && !is_assign_set(OLC_SPELL(d)))
+    len += snprintf(buf + len, BUFSIZE - len, "Spell is not assigned to any classes.\r\n");
 
-  if ((len < bSIZE) && !OLC_SPELL(d)->effectiveness)
-    len += snprintf(buf + len, bSIZE - len, "Spell effectiveness is not set.\r\n");
+  if ((len < BUFSIZE) && !OLC_SPELL(d)->effectiveness)
+    len += snprintf(buf + len, BUFSIZE - len, "Spell effectiveness is not set.\r\n");
 
-  if ((len < bSIZE) && OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_DAMAGE))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_DAMAGE is required. (Damages is set).\r\n");
+  if ((len < BUFSIZE) && OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_DAMAGE))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_DAMAGE is required. (Damages is set).\r\n");
 
-  if ((len < bSIZE) && OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_VIOLENT))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_VIOLENT is required. (Damages is set).\r\n");
+  if ((len < BUFSIZE) && OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_VIOLENT))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_VIOLENT is required. (Damages is set).\r\n");
 
-  if ((len < bSIZE) && is_apply_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_AFFECTS))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_AFFECTS is required. (Affects and applies are set).\r\n");
+  if ((len < BUFSIZE) && is_apply_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_AFFECTS))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_AFFECTS is required. (Affects and applies are set).\r\n");
 
-  if ((len < bSIZE) && (OLC_SPELL(d)->mag_flags & MAG_AFFECTS) && (OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: AFFECTS and UNAFFECTS are both set.\r\n");
+  if ((len < BUFSIZE) && (OLC_SPELL(d)->mag_flags & MAG_AFFECTS) && (OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: AFFECTS and UNAFFECTS are both set.\r\n");
 
-  if ((len < bSIZE) && is_objects_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_CREATIONS))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_CREATIONS is required. (Create objects is set).\r\n");
+  if ((len < BUFSIZE) && is_objects_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_CREATIONS))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_CREATIONS is required. (Create objects is set).\r\n");
 
-  if ((len < bSIZE) && is_dispel_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_UNAFFECTS is required. (Dispell is set).\r\n");
+  if ((len < BUFSIZE) && is_dispel_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_UNAFFECTS))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_UNAFFECTS is required. (Dispell is set).\r\n");
   
-  if ((len < bSIZE) && is_points_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_POINTS))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_POINTS is required. (Points is set).\r\n");
+  if ((len < BUFSIZE) && is_points_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_POINTS))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_POINTS is required. (Points is set).\r\n");
 
-  if ((len < bSIZE) && is_summon_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_SUMMONS))
-    len += snprintf(buf + len, bSIZE - len, "Magic flags: MAG_SUMMON is required. (Summon mobile is set).\r\n");
+  if ((len < BUFSIZE) && is_summon_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_SUMMONS))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_SUMMON is required. (Summon mobile is set).\r\n");
 
-  if ((len < bSIZE) && OLC_SPELL(d)->damages && !OLC_SPELL(d)->max_dam)
-    len += snprintf(buf + len, bSIZE - len, "Damages is set, but max damages is set to 0.\r\n");
+  if ((len < BUFSIZE) && OLC_SPELL(d)->damages && !OLC_SPELL(d)->max_dam)
+    len += snprintf(buf + len, BUFSIZE - len, "Damages is set, but max damages is set to 0.\r\n");
 
-  if ((len < bSIZE) && !OLC_SPELL(d)->targ_flags)
-    len += snprintf(buf + len, bSIZE - len, "No target flags set.\r\n");
+  if ((len < BUFSIZE) && !OLC_SPELL(d)->targ_flags)
+    len += snprintf(buf + len, BUFSIZE - len, "No target flags set.\r\n");
 
   if (*buf)
     send_to_char (d->character, "\r\n%s", buf);
 
-  if (len >= bSIZE) {
+  if (len >= BUFSIZE) {
     send_to_char (d->character, " *** OVERFLOW ***\r\n");
     log("SYSERR: buffer overflow from spedit_show_warnings.");
   }
 }
 
 void spedit_show_messages(struct descriptor_data *d) {
-  char buf[2048];
+  char buf[BUFSIZE];
 
   snprintf (buf, sizeof(buf), "\r\n%s1%s) Wear off  : %s%s\r\n"
                               "%s2%s) To self   : %s%s\r\n"
@@ -580,10 +595,7 @@ void spedit_main_menu (struct descriptor_data *d) {
 
   bool prog = Q->function != NULL;
 
-#if defined (CLEAR_SCREEN)
-  send_to_char (d->character, "[H[J");
-#endif         
-
+  clear_screen (d);
   snprintf (buf, BUFSIZE, "%s-- %s Number      : [%s%5d%s] %s%s%s\r\n"
                 "%sT%s) Type              : [%s%-5s%s]\r\n"
                 "%s1%s) %sStatus            : %s%s\r\n"  
@@ -674,7 +686,7 @@ void spedit_empty_spell (struct str_spells *spell) {
     SAFE_FREE(spell->dispel[i]);
 
   for (i=0; i<NUM_CLASSES; i++) {
-    SAFE_FREE(spell->assign[i].num_prac);
+    SAFE_FREE(spell->assign[i].prac_gain);
     SAFE_FREE(spell->assign[i].num_mana);
   }
 }
@@ -749,7 +761,7 @@ void spedit_copyover_spell (struct str_spells *from, struct str_spells *to)
   for (i=0; i<NUM_CLASSES; i++) {
     to->assign[i].class_num = from->assign[i].class_num;
     to->assign[i].level = from->assign[i].level;
-    to->assign[i].num_prac = STRDUP(from->assign[i].num_prac);
+    to->assign[i].prac_gain = STRDUP(from->assign[i].prac_gain);
     to->assign[i].num_mana = STRDUP(from->assign[i].num_mana);
   }
   to->function = from->function;
@@ -834,7 +846,7 @@ void spedit_init_new_spell (struct str_spells *spell)
  for (i=0; i<NUM_CLASSES; i++) {
    spell->assign[i].class_num  = -1;
    spell->assign[i].level      = 0;
-   spell->assign[i].num_prac   = NULL;
+   spell->assign[i].prac_gain   = NULL;
    spell->assign[i].num_mana   = NULL;
  }
  spell->function               = NULL;
@@ -862,7 +874,7 @@ int spedit_create_spell (struct descriptor_data *d)
    while (SPELL_OLCING_BY(++vnum));
 
    if (vnum > MAX_SKILLS) {
-     mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: Spedit: Skills and spells limits reached.");
+     mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: Spedit: Spells and skills limits reached.");
      return 0;
    }
 
@@ -882,7 +894,7 @@ int spedit_create_spell (struct descriptor_data *d)
  return 1;
 }
 
-void boot_spells (void)
+int boot_spells (void)
 {
  char buf[MAX_STRING_LENGTH + 1] = "";
  char buf1[MAX_STRING_LENGTH + 1] = "";
@@ -893,7 +905,7 @@ void boot_spells (void)
 
  if ((fp=fopen(SPELL_FILE, "r")) == NULL) {
     mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT: Can't boot spells.");
-    return;
+    return 0;
  }
 
  while (!feof(fp)) {
@@ -1050,7 +1062,7 @@ void boot_spells (void)
                 x = fct - DB_CODE_CLASS_MU;
                 if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                   ret = sscanf (buf, "%d %d %[^\n]", &Q->assign [x].class_num, &Q->assign [x].level, buf1);
-                  if (ret == 3) Q->assign [x].num_prac = strdup (buf1);
+                  if (ret == 3) Q->assign [x].prac_gain = strdup (buf1);
                   if (fgets (buf, MAX_STRING_LENGTH, fp)) {
                     ret = sscanf (buf, "%d %[^\n]", &d1, buf1);
                     if (d1 != DB_CODE_MARKER)
@@ -1097,6 +1109,8 @@ void boot_spells (void)
    spedit_save_internally (Q); 
  else
    mudlog (BRF, LVL_BUILDER, TRUE, "SYSERR: BOOT SPELLS: No spells available!");
+
+ return 1;
 }
 
 void spedit_save_to_disk (void)
@@ -1289,25 +1303,25 @@ void spedit_save_to_disk (void)
 
    if (r->assign[0].class_num != -1) {
      snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_MU, 
-                              r->assign[0].class_num, r->assign[0].level, NULL_STR(r->assign[0].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[0].num_mana));
+                              r->assign[0].class_num, r->assign[0].level, NULL_STR(r->assign[0].prac_gain), DB_CODE_MARKER, NULL_STR(r->assign[0].num_mana));
      fprintf(fp, "%s", buf);
    }
 
    if (r->assign[1].class_num != -1) {
      snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_CL, 
-                              r->assign[1].class_num, r->assign[1].level, NULL_STR(r->assign[1].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[1].num_mana));
+                              r->assign[1].class_num, r->assign[1].level, NULL_STR(r->assign[1].prac_gain), DB_CODE_MARKER, NULL_STR(r->assign[1].num_mana));
      fprintf(fp, "%s", buf);
    }
 
    if (r->assign[2].class_num != -1) {
      snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_TH, 
-                              r->assign[2].class_num, r->assign[2].level, NULL_STR(r->assign[2].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[2].num_mana));
+                              r->assign[2].class_num, r->assign[2].level, NULL_STR(r->assign[2].prac_gain), DB_CODE_MARKER, NULL_STR(r->assign[2].num_mana));
      fprintf(fp, "%s", buf);
    }
 
    if (r->assign[3].class_num != -1) {
      snprintf (buf, BUFSIZE, "%2d %d %d %s\n%2d %s\n", DB_CODE_CLASS_WA, 
-                              r->assign[3].class_num, r->assign[3].level, NULL_STR(r->assign[3].num_prac), DB_CODE_MARKER, NULL_STR(r->assign[3].num_mana));
+                              r->assign[3].class_num, r->assign[3].level, NULL_STR(r->assign[3].prac_gain), DB_CODE_MARKER, NULL_STR(r->assign[3].num_mana));
      fprintf(fp, "%s", buf);
    }
 
@@ -1455,11 +1469,10 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                            break;  
     case SPEDIT_GET_NUMMANA : value = formula_interpreter (d->character,
                                       d->character, OLC_NUM(d), FALSE,
-                                      arg, &rts_code);
+                                      arg, GET_LEVEL(d->character), &rts_code);
                               if (!rts_code) {
                                SAFE_FREE(OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana);
-                               OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana =
-                                  (arg && *arg) ? strdup (arg) : NULL;
+                               OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana = STRDUP(arg);
                                spedit_assign_menu(d);
                              } else 
                                  send_to_char (d->character, "Num mana : ");
@@ -1470,11 +1483,10 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                              break;
     case SPEDIT_GET_PROTDUR: value = formula_interpreter (d->character, 
                                      d->character, OLC_NUM(d), FALSE,
-                                     arg, &rts_code);
+                                     arg, GET_LEVEL(d->character), &rts_code);
                              if (!rts_code) { 
                                SAFE_FREE(OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration);
-                               OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration = 
-                                 (arg && *arg) ? strdup (arg) : NULL;
+                               OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration = STRDUP(arg);
                                send_to_char (d->character, "Resist %% : ");
                                OLC_MODE(d) = SPEDIT_GET_RESIST;
                              } else 
@@ -1483,9 +1495,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
     case SPEDIT_GET_SPELL_NUM : if ((*arg == 'r') || (*arg == 'R')) {
                                   OLC_SPELL(d)->protfrom[OLC_VAL(d)].prot_num = -1;
                                   SAFE_FREE(OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration);
-                                  OLC_SPELL(d)->protfrom[OLC_VAL(d)].duration = NULL;
                                   SAFE_FREE(OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist);
-                                  OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist = NULL;
                                   spedit_protection_menu (d);
                                   return; 
                                 }
@@ -1505,27 +1515,25 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                                 return; 
     case SPEDIT_GET_NUMPRAC: value = formula_interpreter (d->character, 
                                      d->character, OLC_NUM(d), FALSE,
-                                     arg, &rts_code);
+                                     arg, GET_LEVEL(d->character), &rts_code);
                              if (!rts_code) {  
-                                SAFE_FREE(OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac);
-                                OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac = 
-                                  (arg && *arg) ? strdup (arg) : NULL;
+                                SAFE_FREE(OLC_SPELL(d)->assign[OLC_VAL(d)].prac_gain);
+                                OLC_SPELL(d)->assign[OLC_VAL(d)].prac_gain = STRDUP(arg);
                                 send_to_char (d->character, "Num mana : ");
                                 OLC_MODE(d) = SPEDIT_GET_NUMMANA;
                              } else 
-                                 send_to_char (d->character, "NUM Practice : ");
+                                 send_to_char (d->character, "Practice gain %% : ");
                              return;
     case SPEDIT_GET_LEVEL  : OLC_SPELL(d)->assign[OLC_VAL(d)].level = atoi(arg);
-                             send_to_char (d->character, "Num Practice : ");
+                             send_to_char (d->character, "Practice gain %% : ");
                              OLC_MODE (d) = SPEDIT_GET_NUMPRAC;
                              return; 
     case SPEDIT_GET_MODIF  : value = formula_interpreter (d->character,
                                      d->character, OLC_NUM(d), FALSE,
-                                     arg, &rts_code);
+                                     arg, GET_LEVEL(d->character), &rts_code);
                              if (!rts_code) {  
                                SAFE_FREE(OLC_SPELL(d)->applies[OLC_VAL(d)].modifier);
-                               OLC_SPELL(d)->applies[OLC_VAL(d)].modifier = 
-                                 (arg && *arg) ? strdup(arg) : NULL;
+                               OLC_SPELL(d)->applies[OLC_VAL(d)].modifier = STRDUP(arg);
                                send_to_char (d->character, "Duration : ");
                                OLC_MODE (d) = SPEDIT_GET_APPLDUR;
                               } else 
@@ -1533,11 +1541,10 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                               return;
     case SPEDIT_GET_APPLDUR : value = formula_interpreter (d->character,
                                       d->character, OLC_NUM(d), FALSE, 
-                                      arg, &rts_code);
+                                      arg, GET_LEVEL(d->character), &rts_code);
                               if (!rts_code) {
                                 SAFE_FREE(OLC_SPELL(d)->applies[OLC_VAL(d)].duration);
-                                OLC_SPELL(d)->applies[OLC_VAL(d)].duration = 
-                                  (arg && *arg) ? strdup (arg) : NULL;
+                                OLC_SPELL(d)->applies[OLC_VAL(d)].duration = STRDUP(arg);
                                 spedit_apply_menu (d);
                               } else 
                                   send_to_char (d->character, "Duration : ");
@@ -1546,11 +1553,10 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                               break;
     case SPEDIT_GET_DAMAGES : value = formula_interpreter (d->character,
                                       d->character, OLC_NUM(d), FALSE,
-                                      arg, &rts_code);
+                                      arg, GET_LEVEL(d->character), &rts_code);
                               if (!rts_code) {
                                 SAFE_FREE(OLC_SPELL(d)->damages);
-                                OLC_SPELL(d)->damages = 
-                                  (arg && *arg) ? strdup (arg) : NULL;
+                                OLC_SPELL(d)->damages = STRDUP(arg);
                                 send_to_char (d->character, "Max damages : ");
                                 OLC_MODE(d) = SPEDIT_GET_MAXDAM;
                               } else 
@@ -1559,33 +1565,30 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
     case SPEDIT_GET_EFFECTIVENESS : 
                               value = formula_interpreter (d->character,
                                       d->character, OLC_NUM(d), FALSE,
-                                      arg, &rts_code);
+                                      arg, GET_LEVEL(d->character), &rts_code);
                               if (!rts_code) {
                                 SAFE_FREE(OLC_SPELL(d)->effectiveness);
-                                OLC_SPELL(d)->effectiveness = 
-                                  (arg && *arg) ? strdup (arg) : NULL;
+                                OLC_SPELL(d)->effectiveness = STRDUP(arg);
                                 break;
                               } else 
                                   send_to_char (d->character, "%% of effectiveness : ");
                               return;
     case SPEDIT_GET_RESIST  : value = formula_interpreter (d->character,
                                       d->character, OLC_NUM(d), FALSE,
-                                      arg, &rts_code);
+                                      arg, GET_LEVEL(d->character), &rts_code);
                               if (!rts_code) {
                                 SAFE_FREE(OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist);
-                                OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist = 
-                                  (arg && *arg) ? strdup (arg) : NULL;
+                                OLC_SPELL(d)->protfrom[OLC_VAL(d)].resist = STRDUP(arg);
                                 spedit_protection_menu(d);
                               } else  
                                   send_to_char (d->character, "Resist %% : ");
                               return;
     case SPEDIT_GET_DELAY   : value = formula_interpreter (d->character,
                                       d->character, OLC_NUM(d), FALSE,
-                                      arg, &rts_code);
+                                      arg, GET_LEVEL(d->character), &rts_code);
                               if (!rts_code) {
                                 SAFE_FREE(OLC_SPELL(d)->delay);
-                                OLC_SPELL(d)->delay = 
-                                  (arg && *arg) ? strdup (arg) : NULL;
+                                OLC_SPELL(d)->delay = STRDUP(arg);
                                 break;
                               } else 
                                   send_to_char (d->character, "Passes (10 passes = 1 sec) : ");
@@ -1619,9 +1622,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
            if ((*arg == 'r') || (*arg == 'R')) {
              OLC_SPELL(d)->applies[OLC_VAL(d)].appl_num = - 1;
              SAFE_FREE(OLC_SPELL(d)->applies[OLC_VAL(d)].modifier);
-             OLC_SPELL(d)->applies[OLC_VAL(d)].modifier = NULL;
              SAFE_FREE(OLC_SPELL(d)->applies[OLC_VAL(d)].duration);
-             OLC_SPELL(d)->applies[OLC_VAL(d)].duration = NULL;
              spedit_apply_menu (d);
              return; 
            }
@@ -1640,7 +1641,6 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                   } else {
                       OLC_SPELL(d)->applies[OLC_VAL(d)].appl_num = x;
                       SAFE_FREE(OLC_SPELL(d)->applies[OLC_VAL(d)].modifier);
-                      OLC_SPELL(d)->applies[OLC_VAL(d)].modifier = NULL;
                       send_to_char (d->character, "Duration : ");
                       OLC_MODE (d) = SPEDIT_GET_APPLDUR;
                     }
@@ -1650,10 +1650,8 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
            if ((*arg == 'r') || (*arg == 'R')) {
              OLC_SPELL(d)->assign[OLC_VAL(d)].class_num = -1;
              OLC_SPELL(d)->assign[OLC_VAL(d)].level = 0;
-             SAFE_FREE(OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac);
-             OLC_SPELL(d)->assign[OLC_VAL(d)].num_prac = NULL;
+             SAFE_FREE(OLC_SPELL(d)->assign[OLC_VAL(d)].prac_gain);
              SAFE_FREE(OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana);
-             OLC_SPELL(d)->assign[OLC_VAL(d)].num_mana = NULL;
              spedit_assign_menu(d);
              return;
            }
@@ -1672,25 +1670,25 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
     case SPEDIT_GET_MSG_WEAR_OFF :
          delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.wear_off);
-         OLC_SPELL(d)->messages.wear_off = (arg && *arg) ? strdup(arg) : NULL;
+         OLC_SPELL(d)->messages.wear_off = STRDUP(arg);
          spedit_show_messages (d);
          return;
     case SPEDIT_GET_MSG_TO_SELF :
          delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.to_self);
-         OLC_SPELL(d)->messages.to_self = (arg && *arg) ? strdup(arg) : NULL;
+         OLC_SPELL(d)->messages.to_self = STRDUP(arg);
          spedit_show_messages (d);
          return;
     case SPEDIT_GET_MSG_TO_VICT :
          delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.to_vict);
-         OLC_SPELL(d)->messages.to_vict = (arg && *arg) ? strdup(arg) : NULL;
+         OLC_SPELL(d)->messages.to_vict = STRDUP(arg);
          spedit_show_messages (d);
          return;
     case SPEDIT_GET_MSG_TO_ROOM :
          delete_doubledollar(arg);
          SAFE_FREE(OLC_SPELL(d)->messages.to_room);
-         OLC_SPELL(d)->messages.to_room = (arg && *arg) ? strdup(arg) : NULL;
+         OLC_SPELL(d)->messages.to_room = STRDUP(arg);
          spedit_show_messages (d);
          return;
     case SPEDIT_SHOW_MESSAGES :
@@ -1749,11 +1747,9 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
     case SPEDIT_GET_OBJECT : if (*arg) 
                                value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
-                                          arg, &rts_code);
+                                          arg, GET_LEVEL(d->character), &rts_code);
                              if (!*arg || !rts_code) {
                                SAFE_FREE(OLC_SPELL(d)->objects[OLC_VAL(d)]); 
-                               OLC_SPELL(d)->objects[OLC_VAL(d)] = NULL;
-
                                if (*arg) 
                                  OLC_SPELL(d)->objects[OLC_VAL(d)] = strdup(arg);
                              }
@@ -1762,11 +1758,9 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
     case SPEDIT_GET_DISPEL : if (*arg) 
                                value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
-                                          arg, &rts_code);
+                                          arg, GET_LEVEL(d->character), &rts_code);
                              if (!*arg || !rts_code) {
                                SAFE_FREE(OLC_SPELL(d)->dispel[OLC_VAL(d)]); 
-                               OLC_SPELL(d)->dispel[OLC_VAL(d)] = NULL;
-
                                if (*arg)
                                  OLC_SPELL(d)->dispel[OLC_VAL(d)] = strdup(arg);
                              }
@@ -1775,23 +1769,19 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
     case SPEDIT_GET_POINTS : if (*arg) 
                                 value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
-                                          arg, &rts_code);
+                                          arg, GET_LEVEL(d->character), &rts_code);
                              if (!arg || !rts_code) {
 		               switch (OLC_VAL(d)) {
                                   case 0 : SAFE_FREE(OLC_SPELL(d)->points.hp);
-                                           OLC_SPELL(d)->points.hp = NULL;
                                            if (*arg) OLC_SPELL(d)->points.hp = strdup(arg);
                                            break;
                                   case 1 : SAFE_FREE(OLC_SPELL(d)->points.mana);
-                                           OLC_SPELL(d)->points.mana = NULL;
                                            if (*arg) OLC_SPELL(d)->points.mana = strdup(arg);
                                            break;
                                   case 2 : SAFE_FREE(OLC_SPELL(d)->points.move);
-                                           OLC_SPELL(d)->points.move = NULL;
                                            if (*arg) OLC_SPELL(d)->points.move = strdup(arg);
                                            break;
                                   case 3 : SAFE_FREE(OLC_SPELL(d)->points.gold);
-                                           OLC_SPELL(d)->points.gold = NULL;
                                            if (*arg) OLC_SPELL(d)->points.gold = strdup(arg);
                                } 
                              } 
@@ -1800,15 +1790,13 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
     case SPEDIT_GET_MOBILE : if (*arg)
                                value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
-                                          arg, &rts_code);
+                                          arg, GET_LEVEL(d->character), &rts_code);
                              if (!arg || !rts_code) {
                                switch (OLC_VAL(d)) {
                                  case 0 : SAFE_FREE(OLC_SPELL(d)->summon_mob);
-                                          OLC_SPELL(d)->summon_mob = NULL;
                                           if (*arg) OLC_SPELL(d)->summon_mob = strdup(arg);
                                           break;
                                  case 1 : SAFE_FREE(OLC_SPELL(d)->summon_req);
-                                          OLC_SPELL(d)->summon_req = NULL;
                                           if (*arg) OLC_SPELL(d)->summon_req = strdup(arg);
                                }
                              }
@@ -1999,6 +1987,7 @@ ACMD(do_splist) {
  int search_disabled = 0;
  int search_not_assigned = 0;
  int search_by_skill = 0;
+ int search_by_function = 0;
  size_t len = 0, tmp_len = 0;
 
  struct str_spells *ptr;
@@ -2008,13 +1997,14 @@ ACMD(do_splist) {
  if (!*argument) {
    send_to_char(ch, "splist all - list all spells\r\n"
                     "splist sk  - list all skills\r\n"
-                    "splist mu  - list all spells in class magical user\r\n" 
-                    "splist cl  - list all spells in class cleric\r\n" 
-                    "splist th  - list all spells in class thief\r\n" 
-                    "splist wa  - list all spells in class warrior\r\n" 
-                    "splist not - list all spells not assigned\r\n"
-                    "splist off - list all spells disabled\r\n"
-                    "splist <word> - list all spells containing the <word>\r\n");
+                    "splist mu  - list all in class magical user\r\n" 
+                    "splist cl  - list all in class cleric\r\n" 
+                    "splist th  - list all in class thief\r\n" 
+                    "splist wa  - list all in class warrior\r\n" 
+                    "splist not - list all not assigned\r\n"
+                    "splist off - list all disabled\r\n"
+                    "splist spec - list all with a special function\r\n"
+                    "splist <word> - list all containing the <word>\r\n");
    return;
  }
  
@@ -2038,6 +2028,9 @@ ACMD(do_splist) {
  else
  if(!strcmp(argument, "not"))
    search_not_assigned = 1;
+ else
+ if(!strcmp(argument, "spec"))
+   search_by_function = 1;
  else
  if(strcmp(argument, "all"))
    search_by_part_name = 1;
@@ -2069,7 +2062,9 @@ ACMD(do_splist) {
 
    if (search_by_skill && (ptr->type == SPELL)) continue;
 
-   if (search_by_part_name && !strstr(ptr->name, argument)) continue;
+   if (search_by_function && !ptr->function) continue;
+
+   if (search_by_part_name && !stristr3(ptr->name, argument)) continue;
 
    tmp_len = snprintf(buf+len, sizeof(buf)-len, "%s%4d%s) [%s%5d%s]%s %-20s%s %-5s    %s%-3s          %s%-3s         %s%s%s\r\n",
              QGRN, ++cpt, QNRM, QGRN, ptr->vnum, QNRM, 

@@ -298,8 +298,6 @@ long   get_ptable_by_name(const char *name);
 void   remove_player(int pfilepos);
 void   clean_pfiles(void);
 void   build_player_index(void);
-void   boot_spells(void);
-void   assign_spells(void);
 
 struct obj_data *create_obj(void);
 void   clear_object(struct obj_data *obj);

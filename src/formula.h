@@ -1,8 +1,18 @@
+/* Copyright (c) 2018 castillo7@hotmail.com
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. */
+
 #ifndef SPEDIT_FORMULA
 #define SPEDIT_FORMULA
 
 int formula_interpreter (struct char_data *self, struct char_data *vict,
-                         int spell_vnum, int syserr, char *cmd, int *rts_code);
+                         int spell_vnum, int syserr, char *cmd, int param, int *rts_code);
 
 #define CODE_SPACE         0     /* a space      */
 #define CODE_LOG_AND       1     /* logical      */  
@@ -64,6 +74,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 #define CODE_VAR_LAST      54    /* last variable  */ 
 #define CODE_ART_DICE      55    /* this was added later */
 #define CODE_COMMA         56
+#define CODE_PARAM         57
 
 #define CODE_DIGIT         99    /* digit 0 to 9 */
 #define ERROR_5000         5000  /* Unknow variable or operator */
@@ -84,6 +95,7 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 #define ERROR_8001         8001  /* no cmd passed to formula interpreter */
 
 #define CHAR_CODE(x)       ((x) == CODE_DIGIT ? 'y' : \
+                            (x) == CODE_PARAM ? 'y' : \
                             (x) == CODE_COMMA ? 'B' : \
                             (x) == CODE_ART_DICE ? 'A' : \
                             (x) >= CODE_VAR_FIRST ? 'z' : \
