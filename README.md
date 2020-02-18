@@ -70,7 +70,7 @@
  This version of spell OLC doesn't support ROOMS except the original SPELL, but it's possible to manually add support in magic.c (mag_rooms)
 - VIOLENT: This flag is required by spells/skills with violent actions. It will stop your action in peaceful rooms, and it will start a fight even if your spell/skill failed. This flags is also required if DAMAGES or AREAS flags are set.
 - ACCDUR: Used in conjonction with AFFECTS or PROTECTIONS, it accumulate the duration.
-- ACCMOD: Used in conjonction with AFFECTS with APPLIES only, it accumulate modifier.
+- ACCMOD: Used in conjonction with AFFECTS and APPLIES only, it accumulate modifier.
 - PROTECTION: This flag is activate "P) Menu -> Protection from" effects.
 
 <b>DON'T FORGET TO SET "Magic FLAGS" YOU NEED, OR YOU WILL SEARCH A LONG TIME FIGURING OUT WHY YOUR SPELL AS NO EFFECT.</b>
