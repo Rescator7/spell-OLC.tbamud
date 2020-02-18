@@ -65,6 +65,18 @@ LOAD_MOBILE {"mob, where"};</pre>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr13.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr14.jpg)
+
+# Warnings
+
+<p>Print a list of warnings about spell or skill bad setup.
+  
+  for e.g: If you create an apply or affects. Menu A, but you don't set Magic Flags: <b>POINTS</b>
+  
+  you'll receive that warning: 
+  
+  <i>Magic flags: MAG_AFFECTS is required. (Affects and applies are set).</i>
+  </p>
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr15.jpg)
 
 # splist command
