@@ -73,9 +73,9 @@
 - ACCMOD: Used in conjonction with AFFECTS with APPLIES only, it accumulate modifier.
 - PROTECTION: This flag is activate "P) Menu -> Protection from" effects.
 
-<b>DON'T FORGET TO SET MAG_FLAGS YOU NEED, OR YOU WILL SEARCH A LONG TIME FIGURING OUT WHY YOU SPELL AS NO EFFECT.</b>
+<b>DON'T FORGET TO SET "Magic FLAGS" YOU NEED, OR YOU WILL SEARCH A LONG TIME FIGURING OUT WHY YOUR SPELL AS NO EFFECT.</b>
   
-  Because, it's possible to create effect, and forget to activate them by using the proper MAG_FLAG.
+  Because, it's possible to create effects, and forget to activate them by using the proper "Magic FLAGS".
   
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr3.jpg)
 
