@@ -157,9 +157,32 @@ This is a 3 slots menu.</p>
 
   - spell(string formula)
   
-<p>Require Magic Flags: <b>UNAFFECTS</b>
+<p>Require Magic Flags: <b>UNAFFECTS</b></p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr7.jpg)
+
+# Menu Create objects
+
+<p>This menu is used to create an object. Up to 3 objects. The object is a string formula. Examples: </p>
+
+  - 1) Object : 1200 + self.class
+  - 2) Object : 1300 + (self.good ? 1 : (self.evil ? 2 : 3))
+  
+<p>Example #1 will create:</p>
+
+ - object vnum 1200 if caster is Magical User 
+ - object vnum 1201 if caster is Cleric
+ - object vnum 1202 if caster is a Thief
+ - object vnum 1203 if caster is a Warrior
+
+<p>Example #2 will create: </p>
+
+  - object 1301 if the caster is good
+  - object 1302 if the caster is evil
+  - object 1303 if the caster is neutral
+  
+<p>Require Magic Flags: <b>CREATIONS</b></p>
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr8.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr9.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr10.jpg)
