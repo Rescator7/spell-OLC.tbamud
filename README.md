@@ -196,7 +196,7 @@ This is a 3 slots menu.</p>
    1) Mobile        : 10
    2) Required item : 161
 
-<p>This exemple is from spell clone(9). It load mobile(10) "the clone". If the object(161) "sacrificial entrails" is in the inventory of the caster, the spell will succeed and the object will be deleted.</p>
+<p>This exemple is from spell clone(9). It load mobile(10) "the clone". If the object(161) "sacrificial entrails" is in the inventory of the caster, the spell will succeed and the object will be deleted. The mobile will be affected by CHARM.</p>
 
 <p>Info: Both "Mobile" and "Required item" are string formula.</p>
 
