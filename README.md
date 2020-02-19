@@ -1,5 +1,8 @@
 # spell-OLC.tbamud
 
+<p>Spell and skill online creation for Tba mud 2020.</p>
+https://github.com/tbamud/tbamud
+
 # Main menu
 
 <p> This is an example from the spell poison vnum 33. 
@@ -201,6 +204,29 @@ This is a 3 slots menu.</p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr9.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr10.jpg)
+
+# Menu Messages
+
+<p>In this menu you can set the basic spell and skill messages. The messages support act codes.</p>
+
+   1) Wear off  : You feel less righteous.
+   2) To self   : $b glows briefly.
+   3) To victim : You feel righteous.
+   4) To room   : \<empty>
+
+- Wear off message: This message is sent when an affect or apply wear off. If Applies & Affects isn't set it does nothing.
+- To self: Send this message to the caster. Used in particuliar spell or skill, when there is no victim, or the caster isn't the victim.
+- To victim: Send this message to the victim. The caster is sometime the victim. For e.g: in SELF_ONLY spell.
+- To room: Send this message to the room.
+
+<p>read more about act code: https://github.com/tbamud/tbamud/blob/master/doc/act.txt</p>
+
+<p><b>NOTES:</b></p>
+
+  1) Spell OLC created a new act code $b this code act like $p when the target of the spell is an object, and act like $N when the target is a MOB/PC. In this exemple spell bless(23) will send the message $b glows briedfly to the caster. $b = will be either the name of the object or victim's name.
+
+  2) It's still possible to send more messages using "Menu -> Script".
+  
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr11.jpg)
 # Menu Script
 
