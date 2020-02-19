@@ -129,6 +129,25 @@
 <p>Require Magic Flags: <b>PROTECTION</b>
   
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr5.jpg)
+
+# Menu Applies & Affects
+
+<p>This menu add applies and affects to a spell/skill. This is a 6 slot menu. </p>
+
+- APPLIES (1 - 25) 
+  - NONE(1): should not be used. it does nothing.
+  - CLASS(8): should not be used. it does nothing.
+  - LEVEL(9): should not be used. it does nothing.
+  - GOLD(16): should not be used. it does nothing.
+  - EXP(17): should not be used. it does nothing.
+
+- AFFECTS (26 - 48)
+  - UNUSED(46): should not be used.
+  - PROT_SPELL(48): should not be used. it is reserved for Protection Menu system.
+<p> APPLIES require a modifier and a duration. Both are string formula. AFFECTS only require the duration.</p>
+
+<p>Require Magic Flags: <b>AFFECTS<b>
+  
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr6.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr7.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr8.jpg)
