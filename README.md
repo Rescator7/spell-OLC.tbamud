@@ -203,6 +203,27 @@ This is a 3 slots menu.</p>
 <p>Require Magic Flags: <b>SUMMONS</b></p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr9.jpg)
+
+# Menu Classes
+
+<p>You can assign a class to your spell or skill in this menu. You can assign all the 4 originals classes if needed.</p>
+
+1) Class       : Magic User (  3) 
+    - Prac gain % : \<empty>
+    - Mana        : (25 - (1 * self.level)) > 10 ? (25 - (1 * self.level)) : 10
+2) Class       : Cleric (  7) 
+    - Prac gain % : \<empty>
+    - Mana        : (25 - (1 * self.level)) > 10 ? (25 - (1 * self.level)) : 10
+3) Class       : \<empty> (  0) 
+
+ - Class(integer) = Class name (# i) it is assigned to.
+ - Prac gain %(string formula): Which % gain you receive toward learning a spell/skill by practice (at the guild). <b>IF NOT SET</b> the TBA mud build-in learning system would be used.
+ - Mana(string formula): Spell mana cost. <b>This option is disabled for SKILL</b>
+ 
+ <b>PLEASE NOTES: </b>
+ 1) From the main menu switching from Type: SPELL to SKILL will unset all Menu -> Classes: Mana settings!
+ 2) There is a mininmum mana cost per spell of 5 mana. Even, if Mana is set to 0.
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr10.jpg)
 
 # Menu Messages
