@@ -146,9 +146,19 @@
   - PROT_SPELL(48): should not be used. it is reserved for Protection Menu system.
 <p> APPLIES require a modifier and a duration. Both are string formula. AFFECTS only require the duration.</p>
 
-<p>Require Magic Flags: <b>AFFECTS<b>
+<p>Require Magic Flags: <b>AFFECTS</b>
   
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr6.jpg)
+
+# Menu Dispel
+
+<p>This menu is used to create a spell or skill that will remove all affects and applies from a specific spell</p>
+This is a 3 slot menu.</p> 
+
+  - spell(string formula)
+  
+<p>Require Magic Flags: <b>UNAFFECTS</b>
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr7.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr8.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr9.jpg)
