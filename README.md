@@ -165,8 +165,8 @@ This is a 3 slots menu.</p>
 
 <p>This menu is used to create an object. Up to 3 objects. The object is a string formula. Examples: </p>
 
-  - 1) Object : 1200 + self.class
-  - 2) Object : 1300 + (self.good ? 1 : (self.evil ? 2 : 3))
+  1) Object : 1200 + self.class
+  2) Object : 1300 + (self.good ? 1 : (self.evil ? 2 : 3))
   
 <p>Example #1 will create:</p>
 
@@ -184,6 +184,21 @@ This is a 3 slots menu.</p>
 <p>Require Magic Flags: <b>CREATIONS</b></p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr8.jpg)
+
+# Menu Summon mobile
+
+<p>This menu is used to summon a mobile. It may or not require an object item to succeed</p>
+
+   - Spell Clone(9) 
+   1) Mobile        : 10
+   2) Required item : 161
+
+<p>This exemple is from spell clone(9). It load mobile(10) "the clone". If the object(161) "sacrificial entrails" is in the inventory of the caster, the spell will succeed and the object will be deleted.</p>
+
+<p>Info: Both "Mobile" and "Required item" are string formula.</p>
+
+<p>Require Magic Flags: <b>SUMMONS</b></p>
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr9.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr10.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr11.jpg)
