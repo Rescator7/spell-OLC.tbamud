@@ -23,6 +23,7 @@ SOFTWARE. */
 #include "spedit.h"
 #include "constants.h"
 #include "class.h"
+#include "improved-edit.h"
 #include "formula.h"
 
 #define BUFSIZE 2048
@@ -304,15 +305,26 @@ void spedit_assign_menu (struct descriptor_data *d) {
   struct str_spells *Q;
 
   Q = OLC_SPELL(d);
-  for (i=0; i<NUM_CLASSES; i++)
-    sprintf (buf, "%s%s%d%s) Name        : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n   "
-                  "%sMana        : %s%s\r\n",
-                  buf, 
-                  grn, i + 1, nrm, yel, 
-                  Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
-                  nrm, cyn, Q->assign[i].level, nrm,
-                  nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain),
-                  nrm, cyn, EMPTY_STR(Q->assign[i].num_mana));
+  if (Q->type == SPELL) {
+    for (i=0; i<NUM_CLASSES; i++)
+      sprintf (buf, "%s%s%d%s) Class       : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n   "
+                    "%sMana        : %s%s\r\n",
+                    buf, 
+                    grn, i + 1, nrm, yel, 
+                    Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
+                    nrm, cyn, Q->assign[i].level, nrm,
+                    nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain),
+                    nrm, cyn, EMPTY_STR(Q->assign[i].num_mana));
+    } else {
+        for (i=0; i<NUM_CLASSES; i++) 
+          sprintf (buf, "%s%s%d%s) Class       : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n",
+                        buf, 
+                        grn, i + 1, nrm, yel, 
+                        Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
+                        nrm, cyn, Q->assign[i].level, nrm,
+                        nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain));
+      }
+
   sprintf (buf, "%s\r\n%sEnter choice (0 to quit) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
   OLC_MODE(d) = SPEDIT_ASSIGN_MENU;
@@ -464,6 +476,9 @@ void spedit_show_warnings (struct descriptor_data *d) {
 
   if ((len < BUFSIZE) && OLC_SPELL(d)->damages && !(OLC_SPELL(d)->mag_flags & MAG_VIOLENT))
     len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_VIOLENT is required. (Damages is set).\r\n");
+
+  if ((len < BUFSIZE) && OLC_SPELL(d)->mag_flags & MAG_AREAS && !(OLC_SPELL(d)->mag_flags & MAG_VIOLENT))
+    len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_VIOLENT is required. (AREAS flas is set).\r\n");
 
   if ((len < BUFSIZE) && is_apply_set(OLC_SPELL(d)) && !(OLC_SPELL(d)->mag_flags & MAG_AFFECTS))
     len += snprintf(buf + len, BUFSIZE - len, "Magic flags: MAG_AFFECTS is required. (Affects and applies are set).\r\n");
@@ -645,6 +660,10 @@ void spedit_main_menu (struct descriptor_data *d) {
   free (str_targ_flags);
   free (str_mag_flags);
   OLC_MODE (d) = SPEDIT_MAIN_MENU;
+}
+
+void spedit_string_cleanup (struct descriptor_data *d, int action) {
+  spedit_main_menu(d);
 }
 
 void spedit_empty_spell (struct str_spells *spell) {
@@ -1432,6 +1451,7 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                            "Move points += ",
                            "Gold += " }; 
   char buf[BUFSIZE];
+  char *oldtext;
 
   int x = 0, value, rts_code = 0;
   struct str_spells *to;
@@ -1466,6 +1486,13 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
         }
         return;
     case SPEDIT_GET_TYPE : OLC_SPELL(d)->type = (atoi(arg) == 1) ? SKILL : SPELL;
+                           // SKILL don't use mana
+                           if (OLC_SPELL(d)->type == SKILL) {
+                             SAFE_FREE(OLC_SPELL(d)->assign[0].num_mana);
+                             SAFE_FREE(OLC_SPELL(d)->assign[1].num_mana);
+                             SAFE_FREE(OLC_SPELL(d)->assign[2].num_mana);
+                             SAFE_FREE(OLC_SPELL(d)->assign[3].num_mana);
+                           }
                            break;  
     case SPEDIT_GET_NUMMANA : value = formula_interpreter (d->character,
                                       d->character, OLC_NUM(d), FALSE,
@@ -1519,8 +1546,13 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                              if (!rts_code) {  
                                 SAFE_FREE(OLC_SPELL(d)->assign[OLC_VAL(d)].prac_gain);
                                 OLC_SPELL(d)->assign[OLC_VAL(d)].prac_gain = STRDUP(arg);
-                                send_to_char (d->character, "Num mana : ");
-                                OLC_MODE(d) = SPEDIT_GET_NUMMANA;
+                                if (OLC_SPELL(d)->type == SPELL) {
+                                  send_to_char (d->character, "Num mana : ");
+                                  OLC_MODE(d) = SPEDIT_GET_NUMMANA;
+                                } else {
+                                    spedit_assign_menu(d);
+                                    return;
+                                  }
                              } else 
                                  send_to_char (d->character, "Practice gain %% : ");
                              return;
@@ -1870,16 +1902,16 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                      } else
                          cleanup_olc (d, CLEANUP_ALL); 
                      return;
-          case '1' : if (GET_LEVEL(d->character) < LVL_IMPL) { 
+          case '1' : /* if (GET_LEVEL(d->character) < LVL_IMPL) { 
                        send_to_char (d->character, "Only the implentors can set that!\r\n");
                        break;
                      } 
-                     else {
+                     else { */
                        send_to_char (d->character, "0-Unavailable, 1-Available\r\n\r\n"
                                                    "Enter choice : ");
                        OLC_MODE(d) = SPEDIT_GET_STATUS;
                        return; 
-                     }
+                   /*  } */
           case '2' : send_to_char (d->character, "Spell name : ");
                      OLC_MODE(d) = SPEDIT_GET_NAME;
                      return;
@@ -1917,11 +1949,11 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
                      return;
           case 's' :
           case 'S' : page_string (d, OLC_SPELL(d)->script, 1);
-                     d->backstr  = STRDUP(OLC_SPELL(d)->script);
-                     d->str      = &OLC_SPELL(d)->script;
-                     d->max_str  = MAX_STRING_LENGTH;
-                     d->mail_to  = 0;
-                     OLC_VAL(d)  = 1;
+                     send_to_char (d->character, "\r\n");
+                     send_editor_help(d);
+                     oldtext = STRDUP(OLC_SPELL(d)->script);
+                     string_write(d, &OLC_SPELL(d)->script, MAX_MESSAGE_LENGTH, 0, oldtext);
+                     OLC_VAL(d) = 1;
                      return;
           case 'c' :
           case 'C' : spedit_assign_menu (d);

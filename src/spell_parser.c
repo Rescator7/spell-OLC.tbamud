@@ -86,7 +86,7 @@ void call_ACMD (void (*function) (), struct char_data *ch,
 int mag_manacost(struct char_data *ch, struct char_data *tch, int spellnum)
 {
   struct str_spells *spell;
-  int num, rts_code;
+  int mana, num, rts_code;
 
   spell = get_spell_by_vnum(spellnum);
 
@@ -106,7 +106,11 @@ int mag_manacost(struct char_data *ch, struct char_data *tch, int spellnum)
       return 0;
   }
   
-  return formula_interpreter (ch, tch, spellnum, TRUE, spell->assign[num].num_mana, GET_LEVEL(ch), &rts_code);
+  mana = formula_interpreter (ch, tch, spellnum, TRUE, spell->assign[num].num_mana, GET_LEVEL(ch), &rts_code);
+  if (mana <= 0)
+    return 5;
+  else
+    return mana;
 }
 
 static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
@@ -524,151 +528,6 @@ int cast_spell(struct char_data *ch, struct char_data *tch,
   return (call_magic(ch, tch, tobj, spellnum, GET_LEVEL(ch), CAST_SPELL));
 }
 
-/* do_cast is the entry point for PC-casted spells.  It parses the arguments,
- * determines the spell number and finds a target, throws the die to see if
- * the spell can be cast, checks for sufficient mana and subtracts it, and
- * passes control to cast_spell(). */
-/*
-ACMD(do_old_cast)
-{
-  struct char_data *tch = NULL;
-  struct obj_data *tobj = NULL;
-  char *s, *t;
-  int number, mana, spellnum, i, target = 0;
-
-  if (IS_NPC(ch))
-    return;
-
-  // get: blank, spell name, target name 
-  s = strtok(argument, "'");
-
-  if (s == NULL) {
-    send_to_char(ch, "Cast what where?\r\n");
-    return;
-  }
-  s = strtok(NULL, "'");
-  if (s == NULL) {
-    send_to_char(ch, "Spell names must be enclosed in the Holy Magic Symbols: '\r\n");
-    return;
-  }
-  t = strtok(NULL, "\0");
-
-  skip_spaces(&s);
-
-  // spellnum = search_block(s, spells, 0);
-  spellnum = find_skill_num(s);
-
-  if ((spellnum < 1) || (spellnum > MAX_SPELLS) || !*s) {
-    send_to_char(ch, "Cast what?!?\r\n");
-    return;
-  }
-  if (GET_LEVEL(ch) < SINFO.min_level[(int) GET_CLASS(ch)]) {
-    send_to_char(ch, "You do not know that spell!\r\n");
-    return;
-  }
-  if (GET_SKILL(ch, spellnum) == 0) {
-    send_to_char(ch, "You are unfamiliar with that spell.\r\n");
-    return;
-  }
-  // Find the target
-  if (t != NULL) {
-    char arg[MAX_INPUT_LENGTH];
-
-    strlcpy(arg, t, sizeof(arg));
-    one_argument(arg, t);
-    skip_spaces(&t);
-
-    // Copy target to global cast_arg2, for use in spells like locate object
-    strcpy(cast_arg2, t);
-  }
-  if (IS_SET(SINFO.targets, TAR_IGNORE)) {
-    target = TRUE;
-  } else if (t != NULL && *t) {
-    number = get_number(&t);
-    if (!target && (IS_SET(SINFO.targets, TAR_CHAR_ROOM))) {
-      if ((tch = get_char_vis(ch, t, &number, FIND_CHAR_ROOM)) != NULL)
-	target = TRUE;
-    }
-    if (!target && IS_SET(SINFO.targets, TAR_CHAR_WORLD))
-      if ((tch = get_char_vis(ch, t, &number, FIND_CHAR_WORLD)) != NULL)
-	target = TRUE;
-
-    if (!target && IS_SET(SINFO.targets, TAR_OBJ_INV))
-      if ((tobj = get_obj_in_list_vis(ch, t, &number, ch->carrying)) != NULL)
-	target = TRUE;
-
-    if (!target && IS_SET(SINFO.targets, TAR_OBJ_EQUIP)) {
-      for (i = 0; !target && i < NUM_WEARS; i++)
-	if (GET_EQ(ch, i) && isname(t, GET_EQ(ch, i)->name)) {
-	  tobj = GET_EQ(ch, i);
-	  target = TRUE;
-	}
-    }
-    if (!target && IS_SET(SINFO.targets, TAR_OBJ_ROOM))
-      if ((tobj = get_obj_in_list_vis(ch, t, &number, world[IN_ROOM(ch)].contents)) != NULL)
-	target = TRUE;
-
-    if (!target && IS_SET(SINFO.targets, TAR_OBJ_WORLD))
-      if ((tobj = get_obj_vis(ch, t, &number)) != NULL)
-	target = TRUE;
-
-  } else {			// if target string is empty 
-    if (!target && IS_SET(SINFO.targets, TAR_FIGHT_SELF))
-      if (FIGHTING(ch) != NULL) {
-	tch = ch;
-	target = TRUE;
-      }
-    if (!target && IS_SET(SINFO.targets, TAR_FIGHT_VICT))
-      if (FIGHTING(ch) != NULL) {
-	tch = FIGHTING(ch);
-	target = TRUE;
-      }
-    // if no target specified, and the spell isn't violent, default to self 
-    if (!target && IS_SET(SINFO.targets, TAR_CHAR_ROOM) &&
-	!SINFO.violent) {
-      tch = ch;
-      target = TRUE;
-    }
-    if (!target) {
-      send_to_char(ch, "Upon %s should the spell be cast?\r\n",
-		IS_SET(SINFO.targets, TAR_OBJ_ROOM | TAR_OBJ_INV | TAR_OBJ_WORLD | TAR_OBJ_EQUIP) ? "what" : "who");
-      return;
-    }
-  }
-
-  if (target && (tch == ch) && SINFO.violent) {
-    send_to_char(ch, "You shouldn't cast that on yourself -- could be bad for your health!\r\n");
-    return;
-  }
-  if (!target) {
-    send_to_char(ch, "Cannot find the target of your spell!\r\n");
-    return;
-  }
-  mana = mag_manacost(ch, spellnum);
-  if ((mana > 0) && (GET_MANA(ch) < mana) && (GET_LEVEL(ch) < LVL_IMMORT)) {
-    send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
-    return;
-  }
-
-  // You throws the dice and you takes your chances.. 101% is total failure 
-  if (rand_number(0, 101) > GET_SKILL(ch, spellnum)) {
-    WAIT_STATE(ch, PULSE_VIOLENCE);
-    if (!tch || !skill_message(0, ch, tch, spellnum))
-      send_to_char(ch, "You lost your concentration!\r\n");
-    if (mana > 0)
-      GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - (mana / 2)));
-    if (SINFO.violent && tch && IS_NPC(tch))
-      hit(tch, ch, TYPE_UNDEFINED);
-  } else { // cast spell returns 1 on success; subtract mana & set waitstate 
-    if (cast_spell(ch, tch, tobj, spellnum)) {
-      WAIT_STATE(ch, PULSE_VIOLENCE);
-      if (mana > 0)
-	GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - mana));
-    }
-  }
-}
-*/
-
 ACMD(do_cast)
 {
  char *s, *targ = NULL;
@@ -688,8 +547,8 @@ ACMD(do_cast)
  int i, delay, rts_code = TRUE;
  int effectiveness = 0;
  int number;
- int level, assign, target = 0;
- int mana = 0;
+ int level, target = 0;
+ int mana = 5;
 
  if (IS_NPC(ch))
    return;
@@ -723,31 +582,25 @@ ACMD(do_cast)
    return;
  }
 
- // for spells and skills with a function, we only check if status == available, and
+ // for skills with a function, we only check if status == available, and
  // we return the control to it function.
- if (spell->function) {
-   if (spell->type == SPELL) {
-//     call_ASPELL (spell->function, GET_LEVEL(ch), ch, tch, tobj);
+ if (spell->function && (spell->type == SKILL)) {
+   call_ACMD (spell->function, ch, argument, 0, 0);
+   return;
+ }
+
+ if (GET_LEVEL(ch) < LVL_IMMORT) {
+   level = get_spell_level(spell->vnum, GET_CLASS(ch));
+   if ((level == -1) || (GET_LEVEL(ch) < level)) {
+     send_to_char(ch, "You do not know that %s!\r\n", (spell->type == SPELL) ? "spell" : "skill");
+     return;
    }
-   else {
-     call_ACMD (spell->function, ch, argument, 0, 0);
+   if (GET_SKILL(ch, spell->vnum) == 0) {
+     send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
      return;
    }
  }
- if (((spell->type == SPELL) && (subcmd != SCMD_SPELL)) ||
-     ((spell->type == SKILL) && (subcmd == SCMD_SPELL))) {
-   send_to_char (ch, "%s", HUH);
-   return;
- }
- level = get_spell_level(spell->vnum, GET_CLASS(ch));
- if (GET_LEVEL(ch) < level) {
-   send_to_char(ch, "You do not know that %s!\r\n", (spell->type == SPELL) ? "spell" : "skill");
-   return;
- }
- if ((GET_LEVEL(ch) < LVL_IMMORT) && (GET_SKILL(ch, spell->vnum) == 0)) {
-   send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
-   return;
- }
+
  if (GET_POS(ch) < spell->min_pos) {
    send_to_char (ch, "%s", wrong_pos[(int) GET_POS(ch)]);
    return;
@@ -825,14 +678,18 @@ ACMD(do_cast)
     return;
   }
   if (!target) {
-    send_to_char(ch, "Cannot find the target of your spell!\r\n");
+    send_to_char(ch, "Cannot find the target of your %s!\r\n", (spell->type == SPELL) ? "spell" : "skill");
     return;
   }
-  mana = mag_manacost(ch, tch, spell->vnum);
-  if ((mana > 0) && (GET_MANA(ch) < mana) && (GET_LEVEL(ch) < LVL_IMMORT)) {
-    send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
-    return;
-  }
+  
+  // only spell cost mana
+  if ((spell->type == SPELL) && (GET_LEVEL(ch) < LVL_IMMORT)) {
+    mana = mag_manacost(ch, tch, spell->vnum);
+    if (GET_MANA(ch) < mana) {
+      send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
+      return;
+    }
+ }
 
  if (spell->effectiveness)
    effectiveness = GET_SKILL(ch, spell->vnum) * 
@@ -842,7 +699,8 @@ ACMD(do_cast)
    WAIT_STATE(ch, PULSE_VIOLENCE);
    if (!tch || !skill_message(0, ch, tch, spell->vnum))
      send_to_char (ch, "You lost your concentration!\r\n");
-   if (mana > 0)
+
+   if ((spell->type == SPELL) && (mana > 0))
      GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - (mana / 2)));
 
    // if you lost your concentration and the spell is MAG_VIOLENT, you still hit a mobile to start the fight.
@@ -852,37 +710,18 @@ ACMD(do_cast)
    return;
  }
 
- // check logical with above IS_SPELL_LEARNED, maybe it should return assign or 0 then?!?
- /*
- if ((assign = find_spell_assign (ch, spell)) == -1) {
-   send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
-   return;
- }
- */
- if ((spell->type == SPELL) && (GET_LEVEL(ch) < LVL_IMMORT)) {
-   assign = find_spell_assign (ch, spell); 
-
-   mana = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->assign[assign].num_mana, GET_LEVEL(ch), &rts_code);
-     
-   if ((mana > 0) && (GET_MANA(ch) < mana)) {
-     send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
-     return;
-   }
- }
-
  if (spell->delay) {
    delay = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, GET_LEVEL(ch), &rts_code);
    WAIT_STATE (ch, MIN(delay, MAX_SPELL_DELAY));
  }
 
  if (cast_spell(ch, tch, tobj, spell->vnum)) {
-    WAIT_STATE(ch, PULSE_VIOLENCE);
-    if (mana > 0)
-      GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - mana));
+   WAIT_STATE(ch, PULSE_VIOLENCE);
+   if (spell->type == SPELL)
+     GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - mana));
  }
 
  if (spell->script)
    if (!perform_script (spell->script, ch, tch, tobj, spell->vnum, 0) && !rts_code)
      send_to_char (ch, "%s", NOEFFECT);   
 }
-

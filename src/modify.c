@@ -224,6 +224,7 @@ void string_add(struct descriptor_data *d, char *str)
       { CON_HEDIT, hedit_string_cleanup },
       { CON_QEDIT  , qedit_string_cleanup },
       { CON_IBTEDIT, ibtedit_string_cleanup },
+      { CON_SPEDIT, spedit_string_cleanup },
       { -1, NULL }
     };
 
@@ -390,6 +391,12 @@ ACMD(do_skillset)
   } 
 
   int minlevel = get_spell_level(skill, pc); 
+
+  // -1 means not found. not assigned to this class.
+  if (minlevel == -1) {
+    send_to_char(ch, "%s cannot be learned in class %s.\r\n", sname, pc_class_types[pc]);
+    return;
+  }
   if ((minlevel >= LVL_IMMORT) && (pl < LVL_IMMORT)) {
     send_to_char(ch, "%s cannot be learned by mortals.\r\n", sname);
     return;

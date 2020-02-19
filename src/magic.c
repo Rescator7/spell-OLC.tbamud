@@ -385,6 +385,7 @@ int mag_protections(int level, struct char_data *ch, struct char_data *tch,
  
   if (spell->mag_flags & MAG_ACCDUR)
     accum_duration = TRUE;
+  new_affect(&af);
   SET_BIT_AR(af.bitvector, AFF_PROTECT);
   af.spell = spellnum;
   af.location = spellprot;
@@ -647,7 +648,7 @@ int mag_points(int level, struct char_data *ch, struct char_data *victim,
 
   if (spell->points.hp) {
     hp = formula_interpreter (ch, victim, spellnum, TRUE, spell->points.hp, level, &rts_code);
-    GET_HIT(victim) = MIN(GET_MAX_HIT(victim), MAX(0, GET_HIT(victim) + hp));
+    GET_HIT(victim) = MIN(GET_MAX_HIT(victim), MAX(1, GET_HIT(victim) + hp));
     effect++;
   }
 

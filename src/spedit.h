@@ -143,4 +143,6 @@ struct str_spells {
 };
 
 void spedit_free_spell (struct str_spells *spell);
+void spedit_main_menu (struct descriptor_data *d);
+void spedit_string_cleanup (struct descriptor_data *d, int action);
 #endif
