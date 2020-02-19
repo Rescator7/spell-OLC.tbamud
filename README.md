@@ -37,6 +37,20 @@
   - Menu in Red: Option is disabled. This spell or skill use special build-in code.
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr1.jpg)
+
+# Min position
+
+<p>The minimum position to cast a spell, or perform a skill. Usually, Fighting is used for in combat spell, and Standing for non-combat spell.</p>
+   
+  - Dead
+  - Mortally wounded
+  - Incapacitated
+  - Sleeping
+  - Resting
+  - Sitting
+  - Fighting
+  - Standing
+  
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr2.jpg)
 
 # Magic flags
