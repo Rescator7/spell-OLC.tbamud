@@ -152,8 +152,8 @@
 
 # Menu Dispel
 
-<p>This menu is used to create a spell or skill that will remove all affects and applies from a specific spell</p>
-This is a 3 slot menu.</p> 
+<p>This menu is used to create a spell or skill that will remove all affects and applies from a specific spell.</p>
+This is a 3 slots menu.</p> 
 
   - spell(string formula)
   
