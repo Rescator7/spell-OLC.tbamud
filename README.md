@@ -113,7 +113,21 @@
 <p>Require Magic Flags : <b>POINTS</b></p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr4.jpg)
-![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr5.jpg)
+
+# Menu Protection from
+
+<p>This menu makes protection spells. Protection are NOT against an affect, but an entire spell ! The system accept upto 6 protections.</p>
+
+1) Name     : poison (33)
+   Duration :
+   Resist % : 20
+
+- Name (integer)
+- Duration (string formula)
+- Resist % (string formula)</code>
+
+<p>Require Magic Flags: <b>PROTECTION</b>
+
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr6.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr7.jpg)
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr8.jpg)
