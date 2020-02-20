@@ -547,15 +547,15 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
  int cpt_dice = 0, cpt_comma = 0;
  int cpt_char = 1;
 
+ *rts_code = 0;
+
  if (!self) {
    *rts_code = ERROR_8000;
    return 0;
  }
 
- if (!cmd)  {
-   *rts_code = ERROR_8001;
+ if (!cmd || !*cmd)
    return 0;
- }
 
  // if no vict, let's self act as the victim.
  if (!vict)

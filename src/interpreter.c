@@ -537,10 +537,10 @@ void command_interpreter(struct char_data *ch, char *argument)
   if (*complete_cmd_info[cmd].command == '\n') {
     int found = 0;
 
-    struct str_spells *spell = get_spell_by_name(argument, SKILL);
+    struct str_spells *skill = get_spell_by_name(arg, SKILL);
 
-    if (spell) {
-      do_cast(ch, line, 1, spell->vnum); 
+    if (skill) {
+      do_cast(ch, line, 1, skill->vnum); 
       return;
     }
 

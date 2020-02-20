@@ -24,6 +24,7 @@ SOFTWARE. */
 #include "constants.h"
 #include "class.h"
 #include "improved-edit.h"
+#include "structs.h"
 #include "formula.h"
 
 #define BUFSIZE 2048
@@ -232,7 +233,7 @@ struct str_spells *get_spell_by_name(char *name, char type)
   int cpt = 0; 
 
   for (ptr = list_spells; ptr; ptr = ptr->next)
-    if (is_abbrev(name, ptr->name) && ((ptr->type == SPSK) || (ptr->type == type))) {
+    if (is_abbrev(name, ptr->name) && ((type == SPSK) || (ptr->type == type))) {
       if (++cpt > 1)
         return NULL;
       first = ptr;
@@ -264,38 +265,6 @@ int olc_spell_by_name (struct descriptor_data *d, char *name)
   }
   OLC_SEARCH(d) = NULL;
   return vnum;
-}
-
-char *spedit_list_targ_flags (int flags) {
-  char buf[2048];
-
-  int i;
-
-  if (flags == 0)
-    strcpy (buf, "NONE");
-  else {
-    buf[0] = '\0';
-    for (i=0; i<NUM_SPELL_FLAGS; i++)
-      if (flags & (1 << i))
-        sprintf (buf, "%s%s ", buf, targ_flags [i]);
-  }
-  return (strdup (buf));
-}
-
-char *spedit_list_mag_flags (int flags) {
-  char buf[2048];
-
-  int i;
-
-  if (flags == 0)
-    strcpy (buf, "NONE");
-  else {
-    buf[0] = '\0';
-    for (i=0; i<NUM_MAG; i++)
-      if (flags & (1 << i)) 
-        sprintf (buf, "%s%s ", buf, mag_flags [i]);
-  }
-  return (strdup (buf));
 }
 
 void spedit_assign_menu (struct descriptor_data *d) {
@@ -394,16 +363,15 @@ void spedit_targ_flags_menu (struct descriptor_data *d) {
   char buf[2048];
 
   int i;
-  char *str_targ_flags;
+  char flags[SMALL_BUFSIZE]; 
 
-  str_targ_flags = spedit_list_targ_flags (OLC_SPELL(d)->targ_flags);
-  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, str_targ_flags);
+  sprintbit(OLC_SPELL(d)->targ_flags, targ_flags, (char *)&flags, SMALL_BUFSIZE);
+  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, flags);
   for (i=0; i < NUM_SPELL_FLAGS; i++)
     sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel,
                    targ_flags [i], (i + 1) % 4 ? "" : "\r\n" );
   sprintf (buf, "%s%s\r\nEnter choice (0 to quit) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
-  free (str_targ_flags);
   OLC_MODE(d) = SPEDIT_SHOW_TARG_FLAGS;
 }
 
@@ -411,16 +379,15 @@ void spedit_mag_flags_menu (struct descriptor_data *d) {
   char buf[2048];
 
   int i;
-  char *str_mag_flags;
+  char flags[SMALL_BUFSIZE];
 
-  str_mag_flags = spedit_list_mag_flags (OLC_SPELL(d)->mag_flags);
-  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, str_mag_flags);
+  sprintbit(OLC_SPELL(d)->mag_flags, mag_flags, (char *)&flags, SMALL_BUFSIZE);
+  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, flags);
   for (i=0; i < NUM_MAG; i++)
     sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel,
                    mag_flags [i], (i + 1) % 4 ? "" : "\r\n" );
   sprintf (buf, "%s%s\r\nEnter choice (0 to quit) : ", buf, nrm);
   send_to_char (d->character, "%s", buf);
-  free (str_mag_flags);
   OLC_MODE(d) = SPEDIT_SHOW_MAG_FLAGS;
 }
 
@@ -597,18 +564,18 @@ void spedit_show_mobile(struct descriptor_data *d) {
 
 void spedit_main_menu (struct descriptor_data *d) {
   char buf[BUFSIZE];
-
-  char *str_targ_flags;
-  char *str_mag_flags;
+  char tflags[SMALL_BUFSIZE];
+  char mflags[SMALL_BUFSIZE];
   struct str_spells *Q;
 
   Q = OLC_SPELL(d);
-  str_targ_flags = spedit_list_targ_flags (Q->targ_flags);
-  str_mag_flags = spedit_list_mag_flags (Q->mag_flags);
-
-  get_char_colors (d->character);
 
   bool prog = Q->function != NULL;
+
+  sprintbit(OLC_SPELL(d)->mag_flags, mag_flags, (char *)&mflags, SMALL_BUFSIZE);
+  sprintbit(OLC_SPELL(d)->targ_flags, targ_flags, (char *)&tflags, SMALL_BUFSIZE);
+
+  get_char_colors (d->character);
 
   clear_screen (d);
   snprintf (buf, BUFSIZE, "%s-- %s Number      : [%s%5d%s] %s%s%s\r\n"
@@ -626,7 +593,7 @@ void spedit_main_menu (struct descriptor_data *d) {
                 "%sA%s) %sMenu -> Applies & Affects\r\n"
                 "%sD%s) %sMenu -> Dispells\r\n"
                 "%sO%s) %sMenu -> Create objects\r\n"
-                "%sX%s) %sMenu -> Summon mobile\r\n"
+                "%sX%s) %sMenu -> Summon mobiles\r\n"
                 "%sS%s) %sMenu -> Script\r\n" 
                 "%sC%s) %sMenu -> Classes\r\n"
                 "%sM%s) %sMenu -> Messages\r\n"
@@ -639,8 +606,8 @@ void spedit_main_menu (struct descriptor_data *d) {
                  prog ? red : grn, nrm, yel, Q->name ? Q->name : UNDEF_SPELL, 
                  prog ? red : grn, nrm, cyn, ((Q->min_pos >= 0) && (Q->min_pos < NUM_CHAR_POSITION)) ? 
                               position_types [Q->min_pos] : "<ILLEGAL>",   
-                 prog ? red : grn, nrm, cyn, str_targ_flags,
-                 prog ? red : grn, nrm, cyn, str_mag_flags,
+                 prog ? red : grn, nrm, cyn, tflags,
+                 prog ? red : grn, nrm, cyn, mflags,
                  prog ? red : grn, nrm, cyn, EMPTY_STR(Q->damages), nrm, cyn, Q->max_dam, nrm,  
                  prog ? red : grn, nrm, cyn, EMPTY_STR(Q->delay),
                  prog ? red : grn, nrm, Q->effectiveness ? nrm : YEL, cyn, EMPTY_STR(Q->effectiveness),
@@ -657,8 +624,6 @@ void spedit_main_menu (struct descriptor_data *d) {
                  grn, nrm,
                  nrm);
   send_to_char (d->character, "%s", buf);
-  free (str_targ_flags);
-  free (str_mag_flags);
   OLC_MODE (d) = SPEDIT_MAIN_MENU;
 }
 
@@ -1776,60 +1741,54 @@ void spedit_parse (struct descriptor_data *d, char *arg) {
          send_to_char (d->character, "Spell VNUM (0 to quit, 'r' to remove) : ");
          OLC_MODE(d) = SPEDIT_GET_SPELL_NUM;
          return;   
-    case SPEDIT_GET_OBJECT : if (*arg) 
-                               value = formula_interpreter (d->character,
+    case SPEDIT_GET_OBJECT : value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
                                           arg, GET_LEVEL(d->character), &rts_code);
-                             if (!*arg || !rts_code) {
+                             if (!rts_code) {
                                SAFE_FREE(OLC_SPELL(d)->objects[OLC_VAL(d)]); 
-                               if (*arg) 
-                                 OLC_SPELL(d)->objects[OLC_VAL(d)] = strdup(arg);
+                               OLC_SPELL(d)->objects[OLC_VAL(d)] = STRDUP(arg);
                              }
                              spedit_show_objects(d);
                              return;
-    case SPEDIT_GET_DISPEL : if (*arg) 
-                               value = formula_interpreter (d->character,
+    case SPEDIT_GET_DISPEL : value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
                                           arg, GET_LEVEL(d->character), &rts_code);
-                             if (!*arg || !rts_code) {
+                             if (!rts_code) {
                                SAFE_FREE(OLC_SPELL(d)->dispel[OLC_VAL(d)]); 
-                               if (*arg)
-                                 OLC_SPELL(d)->dispel[OLC_VAL(d)] = strdup(arg);
+                               OLC_SPELL(d)->dispel[OLC_VAL(d)] = STRDUP(arg);
                              }
                              spedit_show_dispel(d);
                              return;
-    case SPEDIT_GET_POINTS : if (*arg) 
-                                value = formula_interpreter (d->character,
+    case SPEDIT_GET_POINTS : value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
                                           arg, GET_LEVEL(d->character), &rts_code);
-                             if (!arg || !rts_code) {
+                             if (!rts_code) {
 		               switch (OLC_VAL(d)) {
                                   case 0 : SAFE_FREE(OLC_SPELL(d)->points.hp);
-                                           if (*arg) OLC_SPELL(d)->points.hp = strdup(arg);
+                                           OLC_SPELL(d)->points.hp = STRDUP(arg);
                                            break;
                                   case 1 : SAFE_FREE(OLC_SPELL(d)->points.mana);
-                                           if (*arg) OLC_SPELL(d)->points.mana = strdup(arg);
+                                           OLC_SPELL(d)->points.mana = STRDUP(arg);
                                            break;
                                   case 2 : SAFE_FREE(OLC_SPELL(d)->points.move);
-                                           if (*arg) OLC_SPELL(d)->points.move = strdup(arg);
+                                           OLC_SPELL(d)->points.move = STRDUP(arg);
                                            break;
                                   case 3 : SAFE_FREE(OLC_SPELL(d)->points.gold);
-                                           if (*arg) OLC_SPELL(d)->points.gold = strdup(arg);
+                                           OLC_SPELL(d)->points.gold = STRDUP(arg);
                                } 
                              } 
                              spedit_show_points (d);
                              return;
-    case SPEDIT_GET_MOBILE : if (*arg)
-                               value = formula_interpreter (d->character,
+    case SPEDIT_GET_MOBILE : value = formula_interpreter (d->character,
                                           d->character, OLC_NUM(d), FALSE,
                                           arg, GET_LEVEL(d->character), &rts_code);
-                             if (!arg || !rts_code) {
+                             if (!rts_code) {
                                switch (OLC_VAL(d)) {
                                  case 0 : SAFE_FREE(OLC_SPELL(d)->summon_mob);
-                                          if (*arg) OLC_SPELL(d)->summon_mob = strdup(arg);
+                                          OLC_SPELL(d)->summon_mob = STRDUP(arg);
                                           break;
                                  case 1 : SAFE_FREE(OLC_SPELL(d)->summon_req);
-                                          if (*arg) OLC_SPELL(d)->summon_req = strdup(arg);
+                                          OLC_SPELL(d)->summon_req = STRDUP(arg);
                                }
                              }
                              spedit_show_mobile (d);

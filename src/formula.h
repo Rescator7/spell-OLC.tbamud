@@ -92,7 +92,6 @@ int formula_interpreter (struct char_data *self, struct char_data *vict,
 #define ERROR_6000         6000  /* a formula can't start by */
 #define ERROR_7000         7000  /* a formula can't end by */
 #define ERROR_8000         8000  /* no self passed to formula interpreter */
-#define ERROR_8001         8001  /* no cmd passed to formula interpreter */
 
 #define CHAR_CODE(x)       ((x) == CODE_DIGIT ? 'y' : \
                             (x) == CODE_PARAM ? 'y' : \

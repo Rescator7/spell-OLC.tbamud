@@ -511,19 +511,24 @@ int cast_spell(struct char_data *ch, struct char_data *tch,
     return (0);
   }
   if ((tch != ch) && (spell->targ_flags & TAR_SELF_ONLY)) {
-    send_to_char(ch, "You can only cast this spell upon yourself!\r\n");
+    send_to_char(ch, "You can only %s yourself!\r\n", 
+                      spell->type == SPELL ? "cast this spell upon" : "do this to");
     return (0);
   }
   if ((tch == ch) && (spell->targ_flags & TAR_NOT_SELF)) {
-    send_to_char(ch, "You cannot cast this spell upon yourself!\r\n");
+    send_to_char(ch, "You cannot %s yourself!\r\n",
+                      spell->type == SPELL ? "cast this spell upon" : "do this to");
     return (0);
   }
   if ((spell->mag_flags & MAG_GROUPS) && !GROUP(ch)) {
-    send_to_char(ch, "You can't cast this spell if you're not in a group!\r\n");
+    send_to_char(ch, "You can't %s if you're not in a group!\r\n",
+                      spell->type == SPELL ? "cast this spell" : "do this");
     return (0);
   }
   send_to_char(ch, "%s", CONFIG_OK);
-  say_spell(ch, spellnum, tch, tobj);
+
+  if (spell->type == SPELL)
+    say_spell(ch, spellnum, tch, tobj);
 
   return (call_magic(ch, tch, tobj, spellnum, GET_LEVEL(ch), CAST_SPELL));
 }
@@ -567,7 +572,7 @@ ACMD(do_cast)
    targ = strtok (NULL, "\0");
  }
  else // skill
-   s = argument;
+   targ = argument;
 
  if (subcmd == SCMD_SPELL)
    spell = get_spell_by_name(s, SPELL); 
