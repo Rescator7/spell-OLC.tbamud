@@ -217,7 +217,7 @@ This is a 3 slots menu.</p>
 3) Class       : \<empty> (  0) 
 
  - Class(integer) = Class name (# i) it is assigned to.
- - Prac gain %(string formula): Which % gain you receive toward learning a spell/skill by practice (at the guild). <b>IF NOT SET</b> the TBA mud build-in learning system would be used.
+ - Prac gain %(string formula): Which % gain you receive toward learning a spell/skill by practice (at the guild). <b>IF NOT SET</b> the TBA mud build-in learning system would be used. <b>NOTE:</b> Minimum gain is 5%, to avoid having formula that return negative or NULL value.
  - Mana(string formula): Spell mana cost. <b>This option is disabled for SKILL</b>
  
  <b>PLEASE NOTES: </b>
