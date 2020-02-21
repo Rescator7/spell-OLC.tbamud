@@ -7,7 +7,7 @@
 /* date:    25 dec 1999.                                                       */
 /*          2020: updated, bugs fix, etc. now for TBA MUD 2020.                */
 /* *************************************************************************** */
-/* Copyright (c) 2018 castillo7@hotmail.com
+/* Copyright (c) 1999 castillo7@hotmail.com
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

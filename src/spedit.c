@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 castillo7@hotmail.com
+/* Copyright (c) 2020 castillo7@hotmail.com
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -136,16 +136,6 @@ int is_messages_set(struct str_spells *spell)
   return 0;
 }
 
-int find_spell_assign (struct char_data *ch, struct str_spells *ptr)
-{
- int i;
- 
- for (i=0; i<NUM_CLASSES; i++)
-   if (ptr->assign[i].class_num == GET_CLASS(ch))
-     return i;
- return -1;
-}
-
 int get_spell_class(struct str_spells *spell, int class) {
   int i;
 
@@ -165,17 +155,6 @@ int get_spell_mag_flags(int vnum)
 
  log("SYSERR: Spell vnum %d not found at get_spell_mag_flags.", vnum);
  return 0;
-}
-
-int get_spell_apply(struct str_spells *spell, int pos)
-{
- if ((pos < 0) || (pos > MAX_SPELL_AFFECTS - 1))
-  return APPLY_NONE;
-
- if (spell->applies[pos].appl_num == -1)
-   return APPLY_NONE;
- else
-   return spell->applies[pos].appl_num; 
 }
 
 char *get_spell_name(int vnum)
@@ -210,21 +189,6 @@ int get_spell_level(int vnum, int class)
        return spell->assign[i].level;
  }
  return -1;
-}
-
-int find_skill_num (char *name) {
-  struct str_spells *ptr;
-  int first = -1; 
-  int cpt = 0;
-
-  for (ptr = list_spells; ptr; ptr = ptr->next) {
-    if (is_abbrev(name, ptr->name)) {
-       if (++cpt > 1)
-         return -1;
-       first = ptr->vnum;
-    }
-  }
-  return first;
 }
 
 struct str_spells *get_spell_by_name(char *name, char type)

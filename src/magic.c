@@ -216,7 +216,7 @@ int mag_damage(int level, struct char_data *ch, struct char_data *victim,
     return dam;
   }
 
-  dam = MIN(spell->max_dam, formula_interpreter (ch, victim, spellnum, TRUE, spell->damages, level, &rts_code));
+  dam = MIN(spell->max_dam, MAX(0, formula_interpreter (ch, victim, spellnum, TRUE, spell->damages, level, &rts_code)));
 
   // special spells that formula interpreter can't deal with.
   switch (spellnum) {
@@ -284,11 +284,11 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
            } else {
                af[i].location = spell->applies[i].appl_num; 
 
-               affect = get_spell_apply(spell, i);
+               affect = applnum;
                SET_BIT_AR(af[i].bitvector, affect - NUM_APPLIES);
            }
 
-    af[i].duration = formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].duration, level, &rts_code);
+    af[i].duration = MAX(1, formula_interpreter (ch, victim, spellnum, TRUE, spell->applies[i].duration, level, &rts_code));
 
     if (spell->mag_flags & MAG_ACCDUR)
       accum_duration = TRUE;
@@ -567,8 +567,16 @@ int mag_summons(int level, struct char_data *ch, struct obj_data *obj,
   }
 
   fmsg = rand_number(2, 6);	/* Random fail message. */
-  if (spell->summon_mob) 
-    mob_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_mob, level, &rts_code);
+  if (spell->summon_mob) {
+    mob_num = MAX(0, formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_mob, level, &rts_code));
+
+    // mob_num is unsigned, it won't catch negative value from formula_interpreter.
+    // I'm using MAX(0, formula), and consider 0 illegal.
+    if (mob_num == 0) {
+      log("SYSERR: Illegal mobile to summon at mag_summons.");
+      return MAGIC_FAILED;
+    }
+  }
   else {
     log("SYSERR: No mobile to summon at mag_summons.");
     return MAGIC_FAILED;
@@ -576,9 +584,15 @@ int mag_summons(int level, struct char_data *ch, struct obj_data *obj,
 
   if (spell->summon_req) {
     pfail = 0;
-    obj_num = formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_req, level, &rts_code);
-    if (!mag_materials(ch, obj_num, NOTHING, NOTHING, TRUE, TRUE))
+    obj_num = MAX(0, formula_interpreter (ch, ch, spellnum, TRUE, spell->summon_req, level, &rts_code));
+
+    // same as mob_num.
+    if (obj_num == 0) {
+      log("SYSERR: Illegal object required to summon at mag_summons.");
       pfail = 102;
+    } else
+        if (!mag_materials(ch, obj_num, NOTHING, NOTHING, TRUE, TRUE))
+          pfail = 102;
   } else
       pfail = 10; /* 10% failure, should vary in the future. */ 
 
@@ -700,7 +714,7 @@ int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
 
   for (i=0; i<MAX_SPELL_DISPEL; i++) {
     if (spell->dispel[i]) 
-      dispel = formula_interpreter (ch, victim, spellnum, TRUE, spell->dispel[i], level, &rts_code);
+      dispel = MAX(0, formula_interpreter (ch, victim, spellnum, TRUE, spell->dispel[i], level, &rts_code));
     else
       continue;
 
@@ -792,9 +806,9 @@ int mag_creations(int level, struct char_data *ch, int spellnum)
 
   for (i=0; i<MAX_SPELL_OBJECTS; i++) {
     if (spell->objects[i]) {
-      z = formula_interpreter (ch, ch, spellnum, TRUE, spell->objects[i], level, &rts_code);
+      z = MAX(0, formula_interpreter (ch, ch, spellnum, TRUE, spell->objects[i], level, &rts_code));
 
-      if (!rts_code) {
+      if (!rts_code && z) {
         if (!(tobj = read_object(z, VIRTUAL))) {
           goofed = 1;
           log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum, z);

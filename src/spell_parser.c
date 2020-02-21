@@ -106,11 +106,9 @@ int mag_manacost(struct char_data *ch, struct char_data *tch, int spellnum)
       return 0;
   }
   
-  mana = formula_interpreter (ch, tch, spellnum, TRUE, spell->assign[num].num_mana, GET_LEVEL(ch), &rts_code);
-  if (mana <= 0)
-    return 5;
-  else
-    return mana;
+  mana = MAX(5, formula_interpreter (ch, tch, spellnum, TRUE, spell->assign[num].num_mana, GET_LEVEL(ch), &rts_code));
+
+  return mana;
 }
 
 static void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
@@ -264,8 +262,8 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 
   if (spell->mag_flags & MAG_PROTECTION) {
     for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
-      dur = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].duration, level, &rts_code);
-      res = formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].resist, level, &rts_code);
+      dur = MAX(1, formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].duration, level, &rts_code));
+      res = MAX(0, formula_interpreter (caster, cvict, spellnum, TRUE, spell->protfrom[i].resist, level, &rts_code));
       flags |= mag_protections(level, caster, cvict, spell->vnum, spell->protfrom[i].prot_num, dur, res);
     }
   }
@@ -698,7 +696,7 @@ ACMD(do_cast)
 
  if (spell->effectiveness)
    effectiveness = GET_SKILL(ch, spell->vnum) * 
-                   formula_interpreter (ch, tch, spell->vnum, TRUE, spell->effectiveness, GET_LEVEL(ch), &rts_code) / 100;
+                   MAX(0, formula_interpreter (ch, tch, spell->vnum, TRUE, spell->effectiveness, GET_LEVEL(ch), &rts_code)) / 100;
 
  if (rand_number (0, 101) > effectiveness) {
    WAIT_STATE(ch, PULSE_VIOLENCE);
@@ -716,7 +714,7 @@ ACMD(do_cast)
  }
 
  if (spell->delay) {
-   delay = formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, GET_LEVEL(ch), &rts_code);
+   delay = MAX(0, formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, GET_LEVEL(ch), &rts_code));
    WAIT_STATE (ch, MIN(delay, MAX_SPELL_DELAY));
  }
 

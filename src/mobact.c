@@ -148,13 +148,23 @@ void mobile_activity(void)
       }
     }
 
+    /* Help your master */
+    if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master) {
+      vict = FIGHTING(ch->master);
+      if (vict && vict != ch) {
+        act("$n jumps to the aid of $N!", FALSE, ch, 0, ch->master, TO_ROOM);
+        hit(ch, vict, TYPE_UNDEFINED);
+      }
+    }
+
     /* Helper Mobs */
-    if (MOB_FLAGGED(ch, MOB_HELPER) && (!AFF_FLAGGED(ch, AFF_BLIND) || !AFF_FLAGGED(ch, AFF_CHARM))) 
+    if (!FIGHTING(ch) && MOB_FLAGGED(ch, MOB_HELPER) && 
+       (!AFF_FLAGGED(ch, AFF_BLIND) || !AFF_FLAGGED(ch, AFF_CHARM))) 
     {
       found = FALSE;
       for (vict = world[IN_ROOM(ch)].people; vict && !found; vict = vict->next_in_room) 
       {
-	      if (ch == vict || !IS_NPC(vict) || !FIGHTING(vict))
+        if (ch == vict || !IS_NPC(vict) || !FIGHTING(vict))
           continue; 
         if (GROUP(vict) && GROUP(vict) == GROUP(ch))
           continue;

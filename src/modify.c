@@ -310,10 +310,11 @@ static void exdesc_string_cleanup(struct descriptor_data *d, int action)
 ACMD(do_skillset)
 {
   struct char_data *vict;
+  struct str_spells *spell;
   char name[MAX_INPUT_LENGTH];
   char buf[MAX_INPUT_LENGTH], helpbuf[MAX_STRING_LENGTH];
   char *sname;
-  int skill, value, i, qend, pc, pl;
+  int value, i, qend, pc, pl;
 
   argument = one_argument(argument, name);
 
@@ -362,12 +363,12 @@ ACMD(do_skillset)
   strcpy(helpbuf, (argument + 1));	/* strcpy: OK (MAX_INPUT_LENGTH <= MAX_STRING_LENGTH) */
   helpbuf[qend - 1] = '\0';
 
-  if ((skill = find_skill_num(helpbuf)) <= 0) {
+  spell = get_spell_by_name(helpbuf, SPSK);
+  if (!spell) {
     send_to_char(ch, "Unrecognized skill.\r\n");
     return;
-  }
-
-  sname = get_spell_name(skill);
+  } else
+      sname = spell->name;
 
   argument += qend + 1;		/* skip to next parameter */
   argument = one_argument(argument, buf);
@@ -390,7 +391,7 @@ ACMD(do_skillset)
     return;
   } 
 
-  int minlevel = get_spell_level(skill, pc); 
+  int minlevel = get_spell_level(spell->vnum, pc); 
 
   // -1 means not found. not assigned to this class.
   if (minlevel == -1) {
@@ -403,11 +404,10 @@ ACMD(do_skillset)
   } else if (minlevel > pl) {
     send_to_char(ch, "%s is a level %d %s.\r\n", GET_NAME(vict), pl, pc_class_types[pc]);
     send_to_char(ch, "The minimum level for %s is %d for %ss.\r\n", sname, minlevel, pc_class_types[pc]);
+    return;
   }
 
-  /* find_skill_num() guarantees a valid spell_info[] index, or -1, and we
-   * checked for the -1 above so we are safe here. */
-  SET_SKILL(vict, skill, value);
+  SET_SKILL(vict, spell->vnum, value);
   mudlog(BRF, LVL_IMMORT, TRUE, "%s changed %s's %s to %d.", GET_NAME(ch), GET_NAME(vict), sname, value);
   send_to_char(ch, "You change %s's %s to %d.\r\n", GET_NAME(vict), sname, value);
 }

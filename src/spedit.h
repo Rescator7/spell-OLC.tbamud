@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 castillo7@hotmail.com
+/* Copyright (c) 2020 castillo7@hotmail.com
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -71,8 +71,6 @@ extern char *UNDEF_SPELL;
 struct str_spells *get_spell_by_vnum(int vnum);
 struct str_spells *get_spell_by_name (char *name, char type);
 int get_spell_level(int vnum, int class);
-int get_spell_apply(struct str_spells *spell, int pos);
-int find_spell_assign (struct char_data *ch, struct str_spells *ptr);
 int get_spell_class(struct str_spells *spell, int class);
 int get_spell_mag_flags(int vnum);
 

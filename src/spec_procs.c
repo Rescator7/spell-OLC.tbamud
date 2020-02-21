@@ -36,7 +36,7 @@ static void npc_steal(struct char_data *ch, struct char_data *victim);
 static const char *how_good(int percent)
 {
   if (percent < 0)
-    return " error)";
+    return " (error)";
   if (percent == 0)
     return " (not learned)";
   if (percent <= 10)
@@ -137,8 +137,8 @@ SPECIAL(guild)
     send_to_char(ch, "'%s' doesn't exists.\r\n", argument);
     return (TRUE);
   }
-  skill_num = spell->vnum;
 
+  skill_num = spell->vnum;
   level = get_spell_level(skill_num, GET_CLASS(ch));
 
   if ((level == -1) || (GET_LEVEL(ch) < level)) {
@@ -160,7 +160,7 @@ SPECIAL(guild)
   else
     percent += formula_interpreter (ch, ch, skill_num, TRUE, spell->assign[class].prac_gain, GET_LEVEL(ch), &rts_code); 
 
-  SET_SKILL(ch, skill_num, MIN(LEARNED(ch), percent));
+  SET_SKILL(ch, skill_num, MIN(LEARNED(ch), MAX(5, percent)));
 
   if (GET_SKILL(ch, skill_num) >= LEARNED(ch))
     send_to_char(ch, "You are now learned in that area.\r\n");
