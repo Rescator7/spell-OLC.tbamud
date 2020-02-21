@@ -158,9 +158,9 @@ SPECIAL(guild)
   if ((class == -1) || !spell->assign[class].prac_gain)
     percent += MIN(MAXGAIN(ch), MAX(MINGAIN(ch), int_app[GET_INT(ch)].learn));
   else
-    percent += formula_interpreter (ch, ch, skill_num, TRUE, spell->assign[class].prac_gain, GET_LEVEL(ch), &rts_code); 
+    percent += MAX(5, formula_interpreter (ch, ch, skill_num, TRUE, spell->assign[class].prac_gain, GET_LEVEL(ch), &rts_code)); 
 
-  SET_SKILL(ch, skill_num, MIN(LEARNED(ch), MAX(5, percent)));
+  SET_SKILL(ch, skill_num, MIN(LEARNED(ch), percent));
 
   if (GET_SKILL(ch, skill_num) >= LEARNED(ch))
     send_to_char(ch, "You are now learned in that area.\r\n");
