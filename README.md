@@ -185,6 +185,7 @@ This is a 3 slots menu.</p>
   - object 1303 if the caster is neutral
   
 <p>Require Magic Flags: <b>CREATIONS</b></p>
+<p><b>NOTE:</b> Object vnum <= 0 is not considered valid.</p>
 
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr8.jpg)
 
@@ -201,7 +202,8 @@ This is a 3 slots menu.</p>
 <p>Info: Both "Mobile" and "Required item" are string formula.</p>
 
 <p>Require Magic Flags: <b>SUMMONS</b></p>
-
+<p><b>NOTE:</b> Mobile vnum <= 0 is not considered valid.</p>
+  
 ![screenshot](https://github.com/Rescator7/spell-OLC.tbamud/blob/master/screenshots/spell-OLC-scr9.jpg)
 
 # Menu Classes
