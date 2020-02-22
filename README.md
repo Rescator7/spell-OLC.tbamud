@@ -3,6 +3,20 @@
 <p>Spell and skill online creation for Tba mud 2020.</p>
 https://github.com/tbamud/tbamud
 
+# spedit
+
+  - spedit = To create a new spell or skill.
+  - spedit \<vnum> = to edit spell, skill <vnum>.
+  - spedit \<text> =  search and edit.
+  <p>e.g: spedit he</p>
+<pre>
+500H 100M 82V (news) (motd) > spedit he
+Do you want to edit 'control weather' (vnum: 11)? (y/n, q): n
+Do you want to edit 'heal' (vnum: 28)? (y/n, q): n
+Do you want to edit 'group heal' (vnum: 48)? (y/n): n
+500H 100M 82V (news) (motd) > </pre>
+  <p><b>NOTE: </b>You can create a spell or skill vnum from 56-130, by spedit vnum.</p>
+
 # Main menu
 
 <p> This is an example from the spell poison vnum 33. 
