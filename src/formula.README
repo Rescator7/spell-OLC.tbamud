@@ -37,11 +37,11 @@ SELF.MANA = Caster mana
 VICT.DEX  = Victim dexterity.
 SELF.CLASS = 0 (Magical User)
              1 (Cleric)
-             2 (Thiefr)
+             2 (Thief)
              3 (Warrior)
 
 Operator:
-RAND(value) : randmomise number between 1 and value.
+RAND(value) : randomize number between 1 and value.
 
 Operator:
 DICE(a, b)  : help dice.
