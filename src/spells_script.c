@@ -18,6 +18,7 @@ SOFTWARE. */
 #include "act.h"
 #include "formula.h"
 #include "spells_script.h"
+#include "spells.h"
 #include "string.h"
 
 int call_ASCRIPT (int (*function)(), char *str, struct char_data *self,
@@ -196,5 +197,5 @@ int perform_script (char *str, struct char_data *self,
    while (*++p && ((*p == ' ') || (*p == '\r') || (*p == '\n'))) 
      ptr++;
  }
- return effect;
+ return effect ? MAGIC_SUCCESS : MAGIC_NOEFFECT;
 }

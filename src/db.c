@@ -38,6 +38,7 @@
 #include "mud_event.h"
 #include "msgedit.h"
 #include "screen.h"
+#include "spedit.h"
 #include <sys/stat.h>
 
 extern void spedit_free_memory();
@@ -3774,34 +3775,45 @@ static int check_object(struct obj_data *obj)
 
 static int check_object_spell_number(struct obj_data *obj, int val)
 {
-  int error = FALSE;
+  int error = FALSE, spellnum;
   const char *spellname;
+  struct str_spells *spell;
 
-  if (GET_OBJ_VAL(obj, val) == -1 || GET_OBJ_VAL(obj, val) == 0) /* no spell */
+  spellnum = GET_OBJ_VAL(obj, val);
+  if ((spellnum == -1) || (spellnum == 0)) /* no spell */
     return (error);
 
-  /* Check for negative spells, spells beyond the top define, and any spell
-   * which is actually a skill. */
-  if (GET_OBJ_VAL(obj, val) < 0)
-    error = TRUE;
-  if (GET_OBJ_VAL(obj, val) > TOP_SPELL_DEFINE)
-    error = TRUE;
-  if (GET_OBJ_VAL(obj, val) > MAX_SPELLS && GET_OBJ_VAL(obj, val) <= MAX_SKILLS)
-    error = TRUE;
-  if (error)
+  /* Check for negative spells, spells beyond the top define. */
+  if ((spellnum < 0) || (spellnum > TOP_SPELL_DEFINE)) {
     log("SYSERR: Object #%d (%s) has out of range spell #%d.",
-	GET_OBJ_VNUM(obj), obj->short_description, GET_OBJ_VAL(obj, val));
+	GET_OBJ_VNUM(obj), obj->short_description, spellnum);
+    error = TRUE;
+  }
 
-  if (scheck)		/* Spell names don't exist in syntax check mode. */
-    return (error);
+  spell = get_spell_by_vnum(spellnum);
+  if (!spell) {
+    log("SYSERR: Object #%d (%s) has non-existent spell #%d.",
+	GET_OBJ_VNUM(obj), obj->short_description, spellnum);
+    error = TRUE;
+  } else {
+      spellname = skill_name(spellnum);
 
-  /* Now check for unnamed spells. */
-  spellname = skill_name(GET_OBJ_VAL(obj, val));
-
-  if (!str_cmp("UNDEFINED", spellname) && (error = TRUE))
-    log("SYSERR: Object #%d (%s) uses '%s' spell #%d.",
+      /* Check spell availability */
+      if (spell->status == unavailable) {
+        log("SYSERR: Object #%d (%s) uses disabled '%s' spell #%d.",
 		GET_OBJ_VNUM(obj), obj->short_description, spellname,
-		GET_OBJ_VAL(obj, val));
+		spellnum);
+        error = TRUE;
+      } else // no needs to check for "Undefined" named, if it's disabled.
+
+      /* Now check for unnamed spells. */
+      if (!str_cmp("Undefined", spellname)) {
+        log("SYSERR: Object #%d (%s) uses '%s' spell #%d.",
+		GET_OBJ_VNUM(obj), obj->short_description, spellname,
+		spellnum);
+        error = TRUE;
+      }
+     }
 
   return (error);
 }

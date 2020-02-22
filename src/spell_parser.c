@@ -211,7 +211,12 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
   
   if (!spell) {
     log("SYSERR: spell not found vnum %d passed to call_magic.", spellnum);
-    return (0);
+    return 0;
+  }
+
+  if (spell->status == unavailable) {
+    send_to_char (caster, "%s", CONFIG_NOEFFECT);
+    return 0;
   }
 
   if (ROOM_FLAGGED(IN_ROOM(caster), ROOM_PEACEFUL) &&
@@ -232,7 +237,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     
         if (af->modifier >= rand_number(0, 99)) {
           send_to_char(caster, "%s is protected and resits your magic.\r\n", GET_NAME(cvict));
-          return (0); 
+          return 0; 
         }
       }
   }
@@ -300,6 +305,9 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
 
   if ((spell->mag_flags & MAG_MANUAL) && spell->function) 
     call_ASPELL (spell->function, GET_LEVEL(caster), caster, cvict, ovict);
+
+  if (spell->script)
+    flags |= perform_script (spell->script, caster, cvict, ovict, spell->vnum, 0);
 
   if (flags & MAGIC_SUCCESS) {
     if (spell->messages.to_self != NULL && (caster != cvict))
@@ -534,16 +542,6 @@ int cast_spell(struct char_data *ch, struct char_data *tch,
 ACMD(do_cast)
 {
  char *s, *targ = NULL;
- static const char *wrong_pos[] = {
-"Lie still; you are DEAD!!! :-(\r\n",
-"You are in a pretty bad shape, unable to do anything!\r\n",
-"You are in a pretty bad shape, unable to do anything!\r\n",
-"All you can do right now is think about the stars!\r\n",
-"In your dreams, or what?\r\n",
-"Nah... You feel too relaxed to do that..\r\n",
-"Maybe you should get on your feet first?\r\n",
-"No way!  You're fighting for your life!\r\n"};
-
  struct char_data *tch = NULL;
  struct obj_data *tobj = NULL;
  struct str_spells *spell = NULL;
@@ -602,11 +600,6 @@ ACMD(do_cast)
      send_to_char (ch, "You are unfamilliar with that %s.\r\n", (spell->type == SPELL) ? "spell" : "skill");
      return;
    }
- }
-
- if (GET_POS(ch) < spell->min_pos) {
-   send_to_char (ch, "%s", wrong_pos[(int) GET_POS(ch)]);
-   return;
  }
 
 /* Find the target */
@@ -713,18 +706,15 @@ ACMD(do_cast)
    return;
  }
 
- if (spell->delay) {
-   delay = MAX(0, formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, GET_LEVEL(ch), &rts_code));
-   WAIT_STATE (ch, MIN(delay, MAX_SPELL_DELAY));
- }
-
  if (cast_spell(ch, tch, tobj, spell->vnum)) {
-   WAIT_STATE(ch, PULSE_VIOLENCE);
+   if (spell->delay) {
+     delay = MAX(0, formula_interpreter (ch, tch, spell->vnum, TRUE, spell->delay, GET_LEVEL(ch), &rts_code));
+     WAIT_STATE (ch, MIN(delay, MAX_SPELL_DELAY));
+   }
+   else
+     WAIT_STATE(ch, PULSE_VIOLENCE);
+
    if (spell->type == SPELL)
      GET_MANA(ch) = MAX(0, MIN(GET_MAX_MANA(ch), GET_MANA(ch) - mana));
  }
-
- if (spell->script)
-   if (!perform_script (spell->script, ch, tch, tobj, spell->vnum, 0) && !rts_code)
-     send_to_char (ch, "%s", NOEFFECT);   
 }

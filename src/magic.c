@@ -714,14 +714,17 @@ int mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
 
   for (i=0; i<MAX_SPELL_DISPEL; i++) {
     if (spell->dispel[i]) 
-      dispel = MAX(0, formula_interpreter (ch, victim, spellnum, TRUE, spell->dispel[i], level, &rts_code));
+      dispel = formula_interpreter (ch, victim, spellnum, TRUE, spell->dispel[i], level, &rts_code);
     else
       continue;
 
-    if (affected_by_spell(victim, dispel)) { 
-      effect++;
-      affect_from_char(victim, dispel);
-    }
+    if (dispel <= 0) 
+      log("SYSERR: Invalid dispel spell vnum: %d", dispel);
+    else
+      if (affected_by_spell(victim, dispel)) { 
+        effect++;
+        affect_from_char(victim, dispel);
+      }
   }
 
   if (effect)
