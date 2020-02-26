@@ -48,7 +48,7 @@ PARAM      = special level.
              In most case PARAM just return SELF.LEVEL   "
 
 Operator:
-RAND(value) : randmomise number between 1 and value.
+RAND(value) : randomize number between 1 and value.
 
 Operator:
 DICE(a, b)  : help dice.
