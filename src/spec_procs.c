@@ -29,6 +29,7 @@
 #include "spedit.h"
 #include "formula.h"
 
+
 /* locally defined functions of local (file) scope */
 static const char *how_good(int percent);
 static void npc_steal(struct char_data *ch, struct char_data *victim);

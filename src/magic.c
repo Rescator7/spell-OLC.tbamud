@@ -339,7 +339,7 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
    * and waiting for it to fade, for example. */
   if (IS_NPC(victim) && !affected_by_spell(victim, spellnum)) {
     for (i = 0; i < MAX_SPELL_AFFECTS; i++) {
-      for (j=0; j<NUM_AFF_FLAGS; j++) {
+      for (j=1; j<NUM_AFF_FLAGS; j++) {
         if (IS_SET_AR(af[i].bitvector, j) && AFF_FLAGGED(victim, j))
           return MAGIC_NOEFFECT;
       }
@@ -350,7 +350,6 @@ int mag_affects(int level, struct char_data *ch, struct char_data *victim,
    * have an accumulative effect, then fail the spell. */
   if (affected_by_spell(victim,spellnum) && !(accum_duration||accum_affect))
     return MAGIC_NOEFFECT;
-  
 
   for (i = 0; i < MAX_SPELL_AFFECTS; i++)
     if (af[i].bitvector[0] || af[i].bitvector[1] ||
@@ -382,7 +381,7 @@ int mag_protections(int level, struct char_data *ch, struct char_data *tch,
     log("SYSERR: unknown spellnum %d passed to mag_affects.", spellnum);
     return MAGIC_FAILED;
   }
- 
+          
   if (spell->mag_flags & MAG_ACCDUR)
     accum_duration = TRUE;
   new_affect(&af);
@@ -398,25 +397,25 @@ int mag_protections(int level, struct char_data *ch, struct char_data *tch,
 
 /* This function is used to provide services to mag_groups.  This function is
  * the one you should change to add new group spells. */
-static int perform_mag_groups(int level, struct char_data *ch, 
-                           struct char_data *tch, int spellnum, int savetype)
+static int perform_mag_groups(int level, struct char_data *ch,
+	                      struct char_data *tch, int spellnum, int savetype)
 {
-  int ret_flags = 0;
+  int flags = 0;
 
   switch (spellnum) {
     case SPELL_GROUP_HEAL:
-    ret_flags = mag_points(level, ch, tch, SPELL_HEAL, savetype);
+    flags = mag_points(level, ch, tch, SPELL_HEAL, savetype);
     break;
   case SPELL_GROUP_ARMOR:
-    ret_flags = mag_affects(level, ch, tch, SPELL_ARMOR, savetype);
+    flags = mag_affects(level, ch, tch, SPELL_ARMOR, savetype);
     break;
   case SPELL_GROUP_RECALL:
     spell_recall(level, ch, tch, NULL);
-    ret_flags = MAGIC_SUCCESS;
+    flags = MAGIC_SUCCESS;
     break;
   }
 
-  return ret_flags;
+  return flags;
 }
 
 /* Every spell that affects the group should run through here perform_mag_groups
