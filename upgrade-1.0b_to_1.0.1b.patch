@@ -1,0 +1,328 @@
+--- orig/spedit.c	2020-03-04 12:35:01.988276907 -0500
++++ spedit.c	2020-03-04 14:32:54.853930453 -0500
+@@ -28,6 +28,7 @@
+ #include "formula.h"
+ 
+ #define BUFSIZE 2048
++#define TINY_BUFSIZE 512
+ 
+ #define EMPTY_STR(str) ((str) ? (str) : "<empty>")
+ #define NULL_STR(str) ((str) ? (str) : "")
+@@ -232,158 +233,176 @@
+ }
+ 
+ void spedit_assign_menu (struct descriptor_data *d) {
+-  char buf[2048] = "\r\n";
++  char buf[BUFSIZE] = "\r\n";
+ 
+-  int i;  
++  int i, len, total_len = 0;  
+   struct str_spells *Q;
+ 
+   Q = OLC_SPELL(d);
+   if (Q->type == SPELL) {
+-    for (i=0; i<NUM_CLASSES; i++)
+-      sprintf (buf, "%s%s%d%s) Class       : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n   "
+-                    "%sMana        : %s%s\r\n",
+-                    buf, 
+-                    grn, i + 1, nrm, yel, 
+-                    Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
+-                    nrm, cyn, Q->assign[i].level, nrm,
+-                    nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain),
+-                    nrm, cyn, EMPTY_STR(Q->assign[i].num_mana));
+-    } else {
+-        for (i=0; i<NUM_CLASSES; i++) 
+-          sprintf (buf, "%s%s%d%s) Class       : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n",
+-                        buf, 
+-                        grn, i + 1, nrm, yel, 
+-                        Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
+-                        nrm, cyn, Q->assign[i].level, nrm,
+-                        nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain));
++    for (i=0; i<NUM_CLASSES; i++) {
++      len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%d%s) Class       : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n   "
++                     "%sMana        : %s%s\r\n",
++                      grn, i + 1, nrm, yel, 
++                      Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
++                      nrm, cyn, Q->assign[i].level, nrm,
++                      nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain),
++                      nrm, cyn, EMPTY_STR(Q->assign[i].num_mana));
++      total_len += len;
++    }
++  } else {
++      for (i=0; i<NUM_CLASSES; i++) { 
++         len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%d%s) Class       : %s%s %s(%s%3d%s) \r\n   %sPrac gain %% : %s%s\r\n",
++                         grn, i + 1, nrm, yel, 
++                         Q->assign[i].class_num != -1 ? pc_class_types [Q->assign[i].class_num] : "<empty>",
++                         nrm, cyn, Q->assign[i].level, nrm,
++                         nrm, cyn, EMPTY_STR(Q->assign[i].prac_gain));
++         total_len += len;
+       }
++    }
+ 
+-  sprintf (buf, "%s\r\n%sEnter choice (0 to quit) : ", buf, nrm);
++  snprintf (buf + total_len, BUFSIZE - total_len, "\r\n%sEnter choice (0 to quit) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_ASSIGN_MENU;
+ }
+ 
+ void spedit_apply_menu (struct descriptor_data *d) {
+-  char buf[2048] = "\r\n";
+-  char buf1[2048];
++  char buf[BUFSIZE] = "\r\n";
++  char buf1[BUFSIZE];
+ 
+-  int i;
++  int i, len, total_len = 0;
+   struct str_spells *Q;
+ 
+   Q = OLC_SPELL(d);
+   for (i=0; i<MAX_SPELL_AFFECTS; i++) {
+     buf1[0] = '\0';
+     if (Q->applies[i].appl_num < NUM_APPLIES)
+-      sprintf (buf1, "   %sModifier : %s%s\r\n", nrm, cyn, EMPTY_STR(Q->applies[i].modifier));
+-    sprintf (buf, "%s%s%d%s) Name     : %s%s\r\n%s   %sDuration : %s%s\r\n", 
+-                buf, grn, i + 1, nrm, yel,
+-                Q->applies[i].appl_num != -1 ? Q->applies[i].appl_num >= NUM_APPLIES ? 
+-                                               affected_bits [Q->applies[i].appl_num - NUM_APPLIES] : 
+-                                               apply_types [Q->applies[i].appl_num] : "<empty>", 
+-                buf1,
+-                nrm, cyn, EMPTY_STR(Q->applies[i].duration));
++      snprintf (buf1, BUFSIZE, "   %sModifier : %s%s\r\n", nrm, cyn, EMPTY_STR(Q->applies[i].modifier));
++
++    len = snprintf (buf + total_len, BUFSIZE - total_len,  "%s%d%s) Name     : %s%s\r\n%s   %sDuration : %s%s\r\n", 
++                    grn, i + 1, nrm, yel,
++                    Q->applies[i].appl_num != -1 ? Q->applies[i].appl_num >= NUM_APPLIES ? 
++                                                   affected_bits [Q->applies[i].appl_num - NUM_APPLIES] : 
++                                                   apply_types [Q->applies[i].appl_num] : "<empty>", 
++                    buf1,
++                    nrm, cyn, EMPTY_STR(Q->applies[i].duration));
++    total_len += len;
+   }
+-  sprintf (buf, "%s\r\n%sEnter choice (0 to quit) : ", buf, nrm);
++  snprintf (buf + total_len, BUFSIZE - total_len, "%s\r\nEnter choice (0 to quit) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_APPLY_MENU;
+ }
+ 
+ void spedit_protection_menu (struct descriptor_data *d) {
+-  char buf[2048] = "\r\n";
++  char buf[BUFSIZE] = "\r\n";
+ 
+-  int i;
++  int i, len, total_len = 0;
+   char *name;
+   struct str_spells *Q;
+ 
+   Q = OLC_SPELL(d);
+   for (i=0; i<MAX_SPELL_PROTECTIONS; i++) {
+     name = get_spell_name (Q->protfrom[i].prot_num);
+-    sprintf (buf, "%s%s%d%s) Name     : %s%s %s(%s%d%s)\r\n   %sDuration : %s%s\r\n%s   Resist %% : %s%s\r\n", 
+-                buf, grn, i + 1, nrm, yel, name,
+-                nrm, cyn, Q->protfrom[i].prot_num, nrm,
+-                nrm, cyn, EMPTY_STR(Q->protfrom[i].duration),
+-                nrm, cyn, EMPTY_STR(Q->protfrom[i].resist));
++    len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%d%s) Name     : %s%s %s(%s%d%s)\r\n   %sDuration : %s%s\r\n%s   Resist %% : %s%s\r\n", 
++                    grn, i + 1, nrm, yel, name,
++                    nrm, cyn, Q->protfrom[i].prot_num, nrm,
++                    nrm, cyn, EMPTY_STR(Q->protfrom[i].duration),
++                    nrm, cyn, EMPTY_STR(Q->protfrom[i].resist));
++    total_len += len;
+   }
+-  sprintf (buf, "%s\r\n%sEnter choice (0 to quit) : ", buf, nrm);
++  snprintf (buf + total_len, BUFSIZE - total_len, "\r\n%sEnter choice (0 to quit) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_PROTECTION_MENU;
+ }
+ 
+ void spedit_minpos_menu (struct descriptor_data *d) {
+-  char buf[2048];
++  char buf[BUFSIZE];
+ 
+-  int i;
++  int i, len, total_len;
+ 
+-  sprintf (buf, "%s\r\n-- POSITION :    \r\n", nrm);
+-  for (i=0; i < NUM_CHAR_POSITION; i++)
+-    sprintf (buf, "%s%s%2d%s) %s%-16s%s", buf, grn, i + 1, nrm, yel, 
+-                   position_types [i], (i + 1) % 4 ? "" : "\r\n" );
+-  sprintf (buf, "%s%s\r\n\r\nEnter choice (0 to quit) : ", buf, nrm);
++  total_len = snprintf (buf, BUFSIZE, "%s\r\n-- POSITION :    \r\n", nrm);
++  for (i=0; i < NUM_CHAR_POSITION; i++) {
++    len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%2d%s) %s%-16s%s", grn, i + 1, nrm, yel, 
++                    position_types [i], (i + 1) % 4 ? "" : "\r\n" );
++    total_len += len;
++  }
++  snprintf (buf + total_len, BUFSIZE - total_len, "%s\r\n\r\nEnter choice (0 to quit) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_GET_MINPOS;
+ }
+ 
+ void spedit_targ_flags_menu (struct descriptor_data *d) {
+-  char buf[2048];
++  char buf[BUFSIZE];
+ 
+-  int i;
++  int i, len, total_len;
+   char flags[SMALL_BUFSIZE]; 
+ 
+   sprintbit(OLC_SPELL(d)->targ_flags, targ_flags, (char *)&flags, SMALL_BUFSIZE);
+-  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, flags);
+-  for (i=0; i < NUM_SPELL_FLAGS; i++)
+-    sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel,
+-                   targ_flags [i], (i + 1) % 4 ? "" : "\r\n" );
+-  sprintf (buf, "%s%s\r\nEnter choice (0 to quit) : ", buf, nrm);
++  total_len = snprintf (buf, BUFSIZE, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, flags);
++  for (i=0; i < NUM_SPELL_FLAGS; i++) {
++    len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%2d%s) %s%-15s%s", grn, i + 1, nrm, yel,
++                    targ_flags [i], (i + 1) % 4 ? "" : "\r\n" );
++    total_len += len;
++  }
++  snprintf (buf + total_len, BUFSIZE - total_len, "%s\r\n\r\nEnter choice (0 to quit) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_SHOW_TARG_FLAGS;
+ }
+ 
+ void spedit_mag_flags_menu (struct descriptor_data *d) {
+-  char buf[2048];
++  char buf[BUFSIZE];
+ 
+-  int i;
++  int i, len, total_len;
+   char flags[SMALL_BUFSIZE];
+ 
+   sprintbit(OLC_SPELL(d)->mag_flags, mag_flags, (char *)&flags, SMALL_BUFSIZE);
+-  sprintf (buf, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, flags);
+-  for (i=0; i < NUM_MAG; i++)
+-    sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel,
+-                   mag_flags [i], (i + 1) % 4 ? "" : "\r\n" );
+-  sprintf (buf, "%s%s\r\nEnter choice (0 to quit) : ", buf, nrm);
++  total_len = snprintf (buf, BUFSIZE, "%s\r\n-- FLAGS :     %s%s\r\n", nrm, cyn, flags);
++  for (i=0; i < NUM_MAG; i++) {
++    len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%2d%s) %s%-15s%s", grn, i + 1, nrm, yel,
++                    mag_flags [i], (i + 1) % 4 ? "" : "\r\n" );
++    total_len += len;
++  }
++  snprintf (buf + total_len, BUFSIZE - total_len, "%s\r\nEnter choice (0 to quit) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_SHOW_MAG_FLAGS;
+ }
+ 
+ void spedit_choose_apply (struct descriptor_data *d) {
+-  char buf[2048];
++  char buf[BUFSIZE];
+ 
+-  int i, cpt;
++  int i, len, total_len, cpt;
+ 
+-  sprintf (buf, "%s\r\n-- APPLIES : \r\n", nrm);
+-  for (i=0; i < NUM_APPLIES; i++)
+-    sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i + 1, nrm, yel, 
+-                   apply_types [i], (i + 1) % 4 ? "" : "\r\n" );
+-  sprintf (buf, "%s\r\n\r\n%s-- AFFECTS : \r\n", buf, nrm);
++  total_len = snprintf (buf, BUFSIZE, "%s\r\n-- APPLIES : \r\n", nrm);
++  for (i=0; i < NUM_APPLIES; i++) {
++    len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%2d%s) %s%-15s%s", grn, i + 1, nrm, yel, 
++                    apply_types [i], (i + 1) % 4 ? "" : "\r\n" );
++    total_len += len;
++  }
++  len = snprintf (buf + total_len, BUFSIZE - total_len, "\r\n\r\n%s-- AFFECTS : \r\n", nrm);
++  total_len += len;
+   cpt = i + 1; 
+-  for (i=cpt; i < cpt + NUM_AFF_FLAGS; i++)
+-    sprintf (buf, "%s%s%2d%s) %s%-15s%s", buf, grn, i, nrm, yel, affected_bits [i - NUM_APPLIES],
+-                  (i - cpt + 1) % 4 ? "" : "\r\n");
+-  sprintf (buf, "%s%s\r\n\r\nEnter choice (0 to quit, 'r' to remove) : ", buf, nrm);
++  for (i=cpt; i < cpt + NUM_AFF_FLAGS; i++) {
++    len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%2d%s) %s%-15s%s", grn, i, nrm, yel, affected_bits [i - NUM_APPLIES],
++                   (i - cpt + 1) % 4 ? "" : "\r\n");
++    total_len += len;
++  }
++  snprintf (buf + total_len, BUFSIZE - total_len, "%s\r\n\r\nEnter choice (0 to quit, 'r' to remove) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_SHOW_APPLY;
+ }
+ 
+ void spedit_assignement_menu (struct descriptor_data *d) {
+-  char buf[2048];
++  char buf[BUFSIZE];
+ 
+-  int i;
++  int i, len, total_len;
+   
+-  sprintf (buf, "%s\r\n-- CLASSES : \r\n", nrm);
+-  for (i=0; i < NUM_CLASSES; i++)
+-    sprintf (buf, "%s%s%2d%s) %s%-13s%s", buf, grn, i + 1, nrm, yel, pc_class_types [i],
+-                  (i + 1) % 5 ? "" : "\r\n");  
+-  sprintf (buf, "%s%s\r\n\r\nEnter choice (0 to quit, 'r' to remove) : ", buf, nrm);
++  total_len = snprintf (buf, BUFSIZE, "%s\r\n-- CLASSES : \r\n", nrm);
++  for (i=0; i < NUM_CLASSES; i++) {
++    len = snprintf (buf + total_len, BUFSIZE - total_len, "%s%2d%s) %s%-13s%s", grn, i + 1, nrm, yel, pc_class_types [i],
++                   (i + 1) % 5 ? "" : "\r\n");  
++    total_len += len;
++  }
++  snprintf (buf + total_len, BUFSIZE - total_len, "%s\r\n\r\nEnter choice (0 to quit, 'r' to remove) : ", nrm);
+   send_to_char (d->character, "%s", buf);
+   OLC_MODE(d) = SPEDIT_SHOW_ASSIGNEMENT;
+ }
+@@ -528,16 +547,16 @@
+ 
+ void spedit_main_menu (struct descriptor_data *d) {
+   char buf[BUFSIZE];
+-  char tflags[SMALL_BUFSIZE];
+-  char mflags[SMALL_BUFSIZE];
++  char tflags[TINY_BUFSIZE];
++  char mflags[TINY_BUFSIZE];
+   struct str_spells *Q;
+ 
+   Q = OLC_SPELL(d);
+ 
+   bool prog = Q->function != NULL;
+ 
+-  sprintbit(OLC_SPELL(d)->mag_flags, mag_flags, (char *)&mflags, SMALL_BUFSIZE);
+-  sprintbit(OLC_SPELL(d)->targ_flags, targ_flags, (char *)&tflags, SMALL_BUFSIZE);
++  sprintbit(OLC_SPELL(d)->mag_flags, mag_flags, (char *)&mflags, TINY_BUFSIZE);
++  sprintbit(OLC_SPELL(d)->targ_flags, targ_flags, (char *)&tflags, TINY_BUFSIZE);
+ 
+   get_char_colors (d->character);
+ 
+@@ -848,7 +867,7 @@
+  char buf1[MAX_STRING_LENGTH + 1] = "";
+ 
+  FILE *fp;
+- int  x, ret, fct, d1, err = 0, save = 0;
++ int  x, len, ret, fct, d1, err = 0, save = 0;
+  struct str_spells *Q = NULL;
+ 
+  if ((fp=fopen(SPELL_FILE, "r")) == NULL) {
+@@ -1036,8 +1055,9 @@
+                   if (!Q->script)
+                     Q->script = strdup (buf); 
+                   else {
+-                    snprintf (buf1, BUFSIZE, "%s%s", Q->script, buf); 
+-                    if (strlen(buf1) == BUFSIZE) 
++	            len = snprintf(buf1, MAX_STRING_LENGTH, "%s", Q->script);
++		    snprintf(buf1 + len, MAX_STRING_LENGTH - len, "%s", buf);
++                    if (strlen(buf1) == MAX_STRING_LENGTH) 
+                       log("SYSERR: boot spells: spell script buffer overflow"); 
+                     free (Q->script);
+                     Q->script = strdup (buf1);
+@@ -1064,7 +1084,7 @@
+ void spedit_save_to_disk (void)
+ {
+  char buf[BUFSIZE] = "";  
+- char buf1[BUFSIZE] = "";
++ char buf1[BUFSIZE+1] = "";
+  char outbuf[MAX_STRING_LENGTH] = "";
+ 
+  FILE *fp;
+--- orig/oasis.c	2020-03-04 12:35:01.976276822 -0500
++++ oasis.c	2020-03-04 14:25:10.011903024 -0500
+@@ -52,7 +52,7 @@
+   grn = CCGRN(ch, C_NRM);
+   cyn = CCCYN(ch, C_NRM);
+   yel = CCYEL(ch, C_NRM);
+-  bln = CCFBLU(ch, C_NRM);
++  bln = CCBLU(ch, C_NRM);
+   YEL = CBYEL(ch, C_NRM);
+   red = CCRED(ch, C_NRM);
+ }
