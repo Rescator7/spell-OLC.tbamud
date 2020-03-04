@@ -52,7 +52,7 @@ void get_char_colors(struct char_data *ch)
   grn = CCGRN(ch, C_NRM);
   cyn = CCCYN(ch, C_NRM);
   yel = CCYEL(ch, C_NRM);
-  bln = CCFBLU(ch, C_NRM);
+  bln = CCBLU(ch, C_NRM);
   YEL = CBYEL(ch, C_NRM);
   red = CCRED(ch, C_NRM);
 }
