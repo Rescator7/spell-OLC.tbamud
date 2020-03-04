@@ -1,3 +1,5 @@
-21-02-2020: spell-olc-1.0b.patch       : FULL SPELL OLC 1.0b patch against TBA MUD 2020 (#76)
-25-02-2020: spell-olc-1.0b.82.patch    : FULL SPELL OLC 1.0b patch against TBA MUD 2020 (#82) Latest
- 
+21-02-2020: spell-olc-1.0b.patch         : FULL SPELL OLC 1.0b patch against TBA MUD 2020 (#76)
+25-02-2020: spell-olc-1.0b.82.patch      : FULL SPELL OLC 1.0b patch against TBA MUD 2020 (#82)
+04-03-2020: upgrade-1.0b_to_1.0.1b.patch : Upgrade 1.0b (#82) to 1.0.1b (Latest)
+                                                - fix blinking blue color
+                                                - fix gcc 9.2.1 compile warnings
