@@ -1056,8 +1056,7 @@ int boot_spells (void)
                     Q->script = strdup (buf); 
                   else {
 	            len = snprintf(buf1, MAX_STRING_LENGTH, "%s", Q->script);
-		    snprintf(buf1 + len, MAX_STRING_LENGTH - len, "%s", buf);
-//                    snprintf (buf1, MAX_STRING_LENGTH, "%s%s", Q->script, buf); 
+		    snprintf(buf1 + len, MAX_STRING_LENGTH - len, "%s", buf); 
                     if (strlen(buf1) == MAX_STRING_LENGTH) 
                       log("SYSERR: boot spells: spell script buffer overflow"); 
                     free (Q->script);
