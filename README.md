@@ -3,6 +3,11 @@
 <p>Spell and skill online creation for Tba mud 2020.</p>
 https://github.com/tbamud/tbamud
 
+### Test spell and skill OLC server
+
+<p>telnet rescator7.com 4000
+<p> use the in game command 'god' to raise your level to 32, and have access 'spedit' and 'splist'<p>  
+  
 # spedit
 
   - spedit = To create a new spell or skill.
